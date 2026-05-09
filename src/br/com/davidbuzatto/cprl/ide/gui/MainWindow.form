@@ -4,16 +4,6 @@
   <NonVisualComponents>
     <Menu class="javax.swing.JMenuBar" name="menuBar">
       <SubComponents>
-        <Menu class="javax.swing.JMenu" name="menuFile">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="File"/>
-          </Properties>
-        </Menu>
-        <Menu class="javax.swing.JMenu" name="menuEdit">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Edit"/>
-          </Properties>
-        </Menu>
         <Menu class="javax.swing.JMenu" name="menuHelp">
           <Properties>
             <Property name="text" type="java.lang.String" value="Help"/>
@@ -76,6 +66,7 @@
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
               <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/page_white_add.png"/>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="New File"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
@@ -89,6 +80,7 @@
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
               <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/folder.png"/>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Open File"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
@@ -102,6 +94,7 @@
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
               <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"/>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Save All Files"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
@@ -110,38 +103,30 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnSaveAllActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JButton" name="btnClose">
-          <Properties>
-            <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/cancel.png"/>
-            </Property>
-            <Property name="horizontalTextPosition" type="int" value="0"/>
-            <Property name="verticalTextPosition" type="int" value="3"/>
-          </Properties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCloseActionPerformed"/>
-          </Events>
-        </Component>
         <Component class="javax.swing.JToolBar$Separator" name="sep01">
         </Component>
-        <Component class="javax.swing.JButton" name="btnCompile">
+        <Component class="javax.swing.JButton" name="btnCompileAndRun">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/wrench.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"/>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Compile and Run"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCompileActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCompileAndRunActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JButton" name="btnRun">
+        <Component class="javax.swing.JToolBar$Separator" name="sep02">
+        </Component>
+        <Component class="javax.swing.JButton" name="btnDisassembly">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/arrow_undo.png"/>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Disassembly"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>

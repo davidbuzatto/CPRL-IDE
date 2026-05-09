@@ -7,20 +7,28 @@ import edu.citadel.cvm.assembler.Assembler;
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -33,15 +41,19 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 
 /**
  * CPRL IDE main window.
- * 
+ *
  * @author Prof. Dr. David Buzatto
  */
 public class MainWindow extends javax.swing.JFrame {
+
+    private static record FileDetails( 
+        File file, 
+        String parentDirPath,
+        String fileNameWithoutExt
+    ) {};
     
-    private static record FileDetails( File file, String parentDirPath, String fileNameWithoutExt ) {};
-    
-    private static record SourceCodeAreaAndFileDetails( 
-        RSyntaxTextArea sourceCodeArea, 
+    private static record SourceCodeAreaAndFileDetails(
+        RSyntaxTextArea sourceCodeArea,
         JTextPane consoleTextPane,
         JTextPane assemblyTextPane,
         JSplitPane horizontalSplit,
@@ -51,23 +63,25 @@ public class MainWindow extends javax.swing.JFrame {
     
     private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
-    
-    private Map<JComponent, SourceCodeAreaAndFileDetails> openedFiles;
-    private SourceCodeAreaAndFileDetails currentOpenedFile;
+
+    private Map<JComponent, SourceCodeAreaAndFileDetails> openedFileComponents;
+    private SourceCodeAreaAndFileDetails openedFileComponent;
+    private Set<String> openedFiles;
     private boolean discardFirstChange;
-    
+
     public MainWindow() {
-        
+
         initComponents();
-        
+
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
         ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
-        
-        openedFiles = new HashMap<>();
-        currentOpenedFile = null;
+
+        openedFileComponents = new HashMap<>();
+        openedFileComponent = null;
+        openedFiles = new HashSet<>();
         discardFirstChange = true;
-        
-        /*try {
+
+        try {
             openFile( new File( "cprl-sources/Correct_101.cprl" ) );
             openFile( new File( "cprl-sources/Correct_102.cprl" ) );
             openFile( new File( "cprl-sources/Correct_103.cprl" ) );
@@ -75,8 +89,7 @@ public class MainWindow extends javax.swing.JFrame {
             openFile( new File( "cprl-sources/test.cprl" ) );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
-        }*/
-        
+        }
     }
 
     @SuppressWarnings( "unchecked" )
@@ -87,14 +100,12 @@ public class MainWindow extends javax.swing.JFrame {
         btnNew = new javax.swing.JButton();
         btnOpen = new javax.swing.JButton();
         btnSaveAll = new javax.swing.JButton();
-        btnClose = new javax.swing.JButton();
         sep01 = new javax.swing.JToolBar.Separator();
-        btnCompile = new javax.swing.JButton();
-        btnRun = new javax.swing.JButton();
+        btnCompileAndRun = new javax.swing.JButton();
+        sep02 = new javax.swing.JToolBar.Separator();
+        btnDisassembly = new javax.swing.JButton();
         tabbedPaneSourceCode = new javax.swing.JTabbedPane();
         menuBar = new javax.swing.JMenuBar();
-        menuFile = new javax.swing.JMenu();
-        menuEdit = new javax.swing.JMenu();
         menuHelp = new javax.swing.JMenu();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -108,6 +119,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.setRollover(true);
 
         btnNew.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/page_white_add.png"))); // NOI18N
+        btnNew.setToolTipText("New File");
         btnNew.setFocusable(false);
         btnNew.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnNew.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -115,6 +127,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnNew);
 
         btnOpen.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/folder.png"))); // NOI18N
+        btnOpen.setToolTipText("Open File");
         btnOpen.setFocusable(false);
         btnOpen.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnOpen.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -122,39 +135,31 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnOpen);
 
         btnSaveAll.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"))); // NOI18N
+        btnSaveAll.setToolTipText("Save All Files");
         btnSaveAll.setFocusable(false);
         btnSaveAll.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSaveAll.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         btnSaveAll.addActionListener(this::btnSaveAllActionPerformed);
         toolbar.add(btnSaveAll);
-
-        btnClose.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/cancel.png"))); // NOI18N
-        btnClose.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnClose.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnClose.addActionListener(this::btnCloseActionPerformed);
-        toolbar.add(btnClose);
         toolbar.add(sep01);
 
-        btnCompile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/wrench.png"))); // NOI18N
-        btnCompile.setFocusable(false);
-        btnCompile.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnCompile.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnCompile.addActionListener(this::btnCompileActionPerformed);
-        toolbar.add(btnCompile);
+        btnCompileAndRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"))); // NOI18N
+        btnCompileAndRun.setToolTipText("Compile and Run");
+        btnCompileAndRun.setFocusable(false);
+        btnCompileAndRun.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnCompileAndRun.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnCompileAndRun.addActionListener(this::btnCompileAndRunActionPerformed);
+        toolbar.add(btnCompileAndRun);
+        toolbar.add(sep02);
 
-        btnRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"))); // NOI18N
-        btnRun.setFocusable(false);
-        btnRun.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnRun.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        toolbar.add(btnRun);
+        btnDisassembly.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/arrow_undo.png"))); // NOI18N
+        btnDisassembly.setToolTipText("Disassembly");
+        btnDisassembly.setFocusable(false);
+        btnDisassembly.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnDisassembly.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        toolbar.add(btnDisassembly);
 
         tabbedPaneSourceCode.addChangeListener(this::tabbedPaneSourceCodeStateChanged);
-
-        menuFile.setText("File");
-        menuBar.add(menuFile);
-
-        menuEdit.setText("Edit");
-        menuBar.add(menuEdit);
 
         menuHelp.setText("Help");
         menuBar.add(menuHelp);
@@ -180,22 +185,22 @@ public class MainWindow extends javax.swing.JFrame {
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
-    private void btnCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileActionPerformed
-        compile( currentOpenedFile.fileDetails() );
-        assemble( currentOpenedFile.fileDetails() );
-        run( currentOpenedFile.fileDetails() );
-    }//GEN-LAST:event_btnCompileActionPerformed
+    private void btnCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileAndRunActionPerformed
+        compile( openedFileComponent.fileDetails() );
+        assemble( openedFileComponent.fileDetails() );
+        run( openedFileComponent.fileDetails() );
+    }//GEN-LAST:event_btnCompileAndRunActionPerformed
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
-        
+
         if ( discardFirstChange ) {
             discardFirstChange = false;
             return;
         }
-        
+
         JComponent c = (JComponent) tabbedPaneSourceCode.getSelectedComponent();
-        currentOpenedFile = openedFiles.get( c );
-        
+        openedFileComponent = openedFileComponents.get( c );
+
     }//GEN-LAST:event_tabbedPaneSourceCodeStateChanged
 
     private void btnNewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNewActionPerformed
@@ -203,14 +208,14 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_btnNewActionPerformed
 
     private void btnOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenActionPerformed
-        
+
         JFileChooser jfc = new JFileChooser( "./" );
         jfc.setDialogTitle( "Open" );
         jfc.setMultiSelectionEnabled( true );
-        jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code" , "cprl" ) );
-        
+        jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
+
         jfc.showOpenDialog( this );
-        
+
         for ( File selectedFile : jfc.getSelectedFiles() ) {
             if ( selectedFile != null ) {
                 try {
@@ -220,45 +225,41 @@ public class MainWindow extends javax.swing.JFrame {
                 }
             }
         }
-        
+
     }//GEN-LAST:event_btnOpenActionPerformed
 
     private void btnSaveAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveAllActionPerformed
-        
+
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
-            
+
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            SourceCodeAreaAndFileDetails fileData = openedFiles.get( c );
-            
+            SourceCodeAreaAndFileDetails fileData = openedFileComponents.get( c );
+
             try ( FileWriter fw = new FileWriter( fileData.fileDetails.file ) ) {
                 fw.write( fileData.sourceCodeArea.getText() );
             } catch ( IOException exc ) {
                 showErrorMessage( exc );
             }
-            
-        }
-        
-    }//GEN-LAST:event_btnSaveAllActionPerformed
 
-    private void btnCloseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCloseActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnCloseActionPerformed
+        }
+
+    }//GEN-LAST:event_btnSaveAllActionPerformed
 
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
         adjustAllSplitPanes();
     }//GEN-LAST:event_formComponentResized
-    
+
     private void openFile( File file ) throws IOException {
-        
-        if ( openedFiles.containsKey( file.getAbsolutePath() ) ) {
+
+        if ( openedFiles.contains( file.getAbsolutePath() ) ) {
             return;
         }
-        
+
         FileDetails fileDetails = getFileDetails( file );
-        
+
         RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
         sourceCodeArea.setCodeFoldingEnabled( true );
-        sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ));
+        sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ) );
         sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
         sourceCodeArea.setSelectionColor( Color.BLACK );
         sourceCodeArea.setFont( DEFAULT_FONT );
@@ -268,67 +269,68 @@ public class MainWindow extends javax.swing.JFrame {
         sourceCodeArea.setMatchedBracketBGColor( Color.PINK.darker() );
         sourceCodeArea.setTabsEmulated( true );
         sourceCodeArea.setTabSize( 4 );
-        
+
         sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
         applyColorScheme( sourceCodeArea );
-        
+
         RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
-        
+
         // building tab
         JPanel container = new JPanel();
         container.setLayout( new BorderLayout() );
-        
+
         JSplitPane horizontalSplit = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT );
         JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
-        
+
         JTextPane consoleTextPane = new JTextPane();
         consoleTextPane.setFont( DEFAULT_FONT );
         JScrollPane consoleScroll = new JScrollPane( consoleTextPane );
-        
+
         JTextPane assemblyTextPane = new JTextPane();
         assemblyTextPane.setFont( DEFAULT_FONT );
         JScrollPane assemblyScroll = new JScrollPane( assemblyTextPane );
-        
+
         verticalSplit.setTopComponent( sp );
         verticalSplit.setBottomComponent( consoleScroll );
-        
+
         horizontalSplit.setLeftComponent( verticalSplit );
         horizontalSplit.setRightComponent( assemblyScroll );
-        
+
         container.add( horizontalSplit, BorderLayout.CENTER );
-        tabbedPaneSourceCode.addTab( fileDetails.file.getName(), container );
+        addClosableTab( fileDetails.file.getName(), container );
         tabbedPaneSourceCode.setSelectedComponent( container );
-        
-        SourceCodeAreaAndFileDetails sourceDetails = new SourceCodeAreaAndFileDetails( 
-            sourceCodeArea, 
-            consoleTextPane, 
-            assemblyTextPane, 
-            horizontalSplit, 
-            verticalSplit, 
+
+        SourceCodeAreaAndFileDetails sourceDetails = new SourceCodeAreaAndFileDetails(
+            sourceCodeArea,
+            consoleTextPane,
+            assemblyTextPane,
+            horizontalSplit,
+            verticalSplit,
             fileDetails
         );
-        openedFiles.put( container, sourceDetails );
-        currentOpenedFile = sourceDetails;
+        openedFileComponents.put( container, sourceDetails );
+        openedFileComponent = sourceDetails;
+        openedFiles.add( sourceDetails.fileDetails.file().getAbsolutePath() );
         loadSourceCode( fileDetails.file(), sourceCodeArea );
-        
-        adjustSplitPanes( currentOpenedFile );
-        
+
+        adjustSplitPanes( openedFileComponent );
+
     }
-    
+
     private void loadSourceCode( File file, RSyntaxTextArea sourceCodeArea ) throws IOException {
-        
+
         Scanner s = new Scanner( file );
         StringBuilder sb = new StringBuilder();
-        
+
         while ( s.hasNextLine() ) {
             sb.append( s.nextLine() ).append( "\n" );
         }
-        
+
         sourceCodeArea.setText( sb.toString() );
         SwingUtilities.invokeLater( () -> sourceCodeArea.setCaretPosition( 0 ) );
-        
+
     }
-    
+
     private void compile( FileDetails fileDetails ) {
 
         try {
@@ -339,9 +341,9 @@ public class MainWindow extends javax.swing.JFrame {
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
-        
+
     }
-    
+
     private void assemble( FileDetails fileDetails ) {
 
         try {
@@ -352,9 +354,9 @@ public class MainWindow extends javax.swing.JFrame {
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
-        
+
     }
-    
+
     private void run( FileDetails fileDetails ) {
 
         try {
@@ -369,44 +371,44 @@ public class MainWindow extends javax.swing.JFrame {
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
-        
+
     }
 
     private void showErrorMessage( Exception exc ) {
-        JOptionPane.showMessageDialog( 
-            null, 
-            exc.getMessage(), 
-            "ERRO", 
+        JOptionPane.showMessageDialog(
+            null,
+            exc.getMessage(),
+            "ERRO",
             JOptionPane.ERROR_MESSAGE
         );
     }
-    
+
     private void adjustSplitPanes( SourceCodeAreaAndFileDetails fileData ) {
         SwingUtilities.invokeLater( () -> {
             fileData.horizontalSplit.setDividerLocation( 0.8 );
             fileData.verticalSplit.setDividerLocation( 0.8 );
-        });
+        } );
     }
-    
+
     private void adjustAllSplitPanes() {
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            SourceCodeAreaAndFileDetails fileData = openedFiles.get( c );
+            SourceCodeAreaAndFileDetails fileData = openedFileComponents.get( c );
             adjustSplitPanes( fileData );
         }
     }
-    
+
     private FileDetails getFileDetails( File file ) {
         String parentDirPath = file.getParentFile().getPath();
         String fileNameWithoudExt = file.getName();
         fileNameWithoudExt = fileNameWithoudExt.substring( 0, fileNameWithoudExt.lastIndexOf( "." ) );
         return new FileDetails( file, parentDirPath, fileNameWithoudExt );
     }
-    
+
     private void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
-        
+
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
-        
+
         Font plain = DEFAULT_FONT;
         //Font bold = DEFAULT_FONT.deriveFont( Font.BOLD );
         //Font italic = DEFAULT_FONT.deriveFont( Font.ITALIC );
@@ -427,28 +429,62 @@ public class MainWindow extends javax.swing.JFrame {
         scheme.getStyle( Token.RESERVED_WORD ).foreground = new Color( 0xF97583, false );
         scheme.getStyle( Token.DATA_TYPE ).foreground = new Color( 0xB392F0, false );
         scheme.getStyle( Token.SEPARATOR ).foreground = new Color( 0xFFFFFF, false );
-        
+
         sourceCodeArea.revalidate();
-        
+
+    }
+
+    public void addClosableTab( String title, Component content ) {
+
+        tabbedPaneSourceCode.addTab( title, content );
+        int index = tabbedPaneSourceCode.indexOfComponent( content );
+
+        JPanel tabPanel = new JPanel( new FlowLayout( FlowLayout.LEFT, 0, 0 ) );
+        tabPanel.setOpaque( false );
+
+        JLabel titleLabel = new JLabel( title );
+        titleLabel.setBorder( BorderFactory.createEmptyBorder( 0, 0, 0, 5 ) );
+
+        JButton closeButton = new JButton( "x" );
+        closeButton.setFont( closeButton.getFont().deriveFont( 10f ) );
+        closeButton.setFocusable( false );
+
+        closeButton.addActionListener( e -> {
+            int i = tabbedPaneSourceCode.indexOfTabComponent( tabPanel );
+            if ( i != -1 ) {
+                closeTab( i );
+            }
+        });
+
+        tabPanel.add( titleLabel );
+        tabPanel.add( closeButton );
+
+        tabbedPaneSourceCode.setTabComponentAt( index, tabPanel );
+
+    }
+
+    private void closeTab( int index ) {
+        JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( index );
+        SourceCodeAreaAndFileDetails data = openedFileComponents.remove( c );
+        openedFiles.remove( data.fileDetails.file.getAbsolutePath() );
+        tabbedPaneSourceCode.remove( index );
     }
     
     public static void main( String args[] ) {
         FlatDarkLaf.setup();
         SwingUtilities.invokeLater( () -> new MainWindow().setVisible( true ) );
     }
-    
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnClose;
-    private javax.swing.JButton btnCompile;
+    private javax.swing.JButton btnCompileAndRun;
+    private javax.swing.JButton btnDisassembly;
     private javax.swing.JButton btnNew;
     private javax.swing.JButton btnOpen;
-    private javax.swing.JButton btnRun;
     private javax.swing.JButton btnSaveAll;
     private javax.swing.JMenuBar menuBar;
-    private javax.swing.JMenu menuEdit;
-    private javax.swing.JMenu menuFile;
     private javax.swing.JMenu menuHelp;
     private javax.swing.JToolBar.Separator sep01;
+    private javax.swing.JToolBar.Separator sep02;
     private javax.swing.JTabbedPane tabbedPaneSourceCode;
     private javax.swing.JToolBar toolbar;
     // End of variables declaration//GEN-END:variables
