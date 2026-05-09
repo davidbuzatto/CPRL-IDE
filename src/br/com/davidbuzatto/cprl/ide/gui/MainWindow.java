@@ -259,6 +259,13 @@ public class MainWindow extends javax.swing.JFrame {
         sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ));
         sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
         sourceCodeArea.setFont( DEFAULT_FONT );
+        sourceCodeArea.setAntiAliasingEnabled( true );
+        sourceCodeArea.setCodeFoldingEnabled( false );
+        sourceCodeArea.setAutoIndentEnabled( false );
+        sourceCodeArea.setMatchedBracketBGColor( Color.PINK.darker() );
+        sourceCodeArea.setTabsEmulated( true );
+        sourceCodeArea.setTabSize( 4 );
+        
         sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
         applyColorScheme( sourceCodeArea );
         
