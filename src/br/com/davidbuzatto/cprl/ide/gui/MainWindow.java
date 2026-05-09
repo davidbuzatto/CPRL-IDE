@@ -8,7 +8,6 @@ import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.Point;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -68,12 +67,15 @@ public class MainWindow extends javax.swing.JFrame {
         currentOpenedFile = null;
         discardFirstChange = true;
         
-        try {
-            openFile( new File( "C:/Users/David/Desktop/trabalhando/Hanoi.cprl" ) );
-            //openFile( new File( "C:/Users/David/Desktop/trabalhando/test.cprl" ) );
+        /*try {
+            openFile( new File( "cprl-sources/Correct_101.cprl" ) );
+            openFile( new File( "cprl-sources/Correct_102.cprl" ) );
+            openFile( new File( "cprl-sources/Correct_103.cprl" ) );
+            openFile( new File( "cprl-sources/Hanoi.cprl" ) );
+            openFile( new File( "cprl-sources/test.cprl" ) );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
-        }
+        }*/
         
     }
 
@@ -202,7 +204,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void btnOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenActionPerformed
         
-        JFileChooser jfc = new JFileChooser();
+        JFileChooser jfc = new JFileChooser( "./" );
         jfc.setDialogTitle( "Open" );
         jfc.setMultiSelectionEnabled( true );
         jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code" , "cprl" ) );
@@ -258,6 +260,7 @@ public class MainWindow extends javax.swing.JFrame {
         sourceCodeArea.setCodeFoldingEnabled( true );
         sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ));
         sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
+        sourceCodeArea.setSelectionColor( Color.BLACK );
         sourceCodeArea.setFont( DEFAULT_FONT );
         sourceCodeArea.setAntiAliasingEnabled( true );
         sourceCodeArea.setCodeFoldingEnabled( false );
@@ -322,6 +325,7 @@ public class MainWindow extends javax.swing.JFrame {
         }
         
         sourceCodeArea.setText( sb.toString() );
+        SwingUtilities.invokeLater( () -> sourceCodeArea.setCaretPosition( 0 ) );
         
     }
     
@@ -400,7 +404,19 @@ public class MainWindow extends javax.swing.JFrame {
     }
     
     private void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
+        
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
+        
+        Font plain = DEFAULT_FONT;
+        //Font bold = DEFAULT_FONT.deriveFont( Font.BOLD );
+        //Font italic = DEFAULT_FONT.deriveFont( Font.ITALIC );
+
+        scheme.getStyle( Token.RESERVED_WORD ).font = plain;
+        scheme.getStyle( Token.COMMENT_EOL ).font = plain;
+        scheme.getStyle( Token.IDENTIFIER ).font = plain;
+        scheme.getStyle( Token.DATA_TYPE ).font = plain;
+        scheme.getStyle( Token.OPERATOR ).font = plain;
+
         scheme.getStyle( Token.COMMENT_EOL ).foreground = new Color( 0x808080, false );
         scheme.getStyle( Token.IDENTIFIER ).foreground = new Color( 0xFFFFFF, false );
         scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground = new Color( 0x79B8FF, false );
@@ -411,7 +427,9 @@ public class MainWindow extends javax.swing.JFrame {
         scheme.getStyle( Token.RESERVED_WORD ).foreground = new Color( 0xF97583, false );
         scheme.getStyle( Token.DATA_TYPE ).foreground = new Color( 0xB392F0, false );
         scheme.getStyle( Token.SEPARATOR ).foreground = new Color( 0xFFFFFF, false );
+        
         sourceCodeArea.revalidate();
+        
     }
     
     public static void main( String args[] ) {

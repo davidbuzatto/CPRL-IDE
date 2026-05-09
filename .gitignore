@@ -2,3 +2,5 @@
 /dist/
 /target/
 /.claude/
+*.asm
+*.obj
