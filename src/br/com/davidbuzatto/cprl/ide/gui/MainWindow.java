@@ -46,28 +46,28 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class MainWindow extends javax.swing.JFrame {
 
-    private static record FileDetails( 
-        File file, 
+    private static record SourceFileInfo(
+        File file,
         String parentDirPath,
         String fileNameWithoutExt
     ) {};
     
-    private static record SourceCodeAreaAndFileDetails(
+    private static record EditorTab(
         RSyntaxTextArea sourceCodeArea,
         JTextPane consoleTextPane,
         JTextPane assemblyTextPane,
         JSplitPane horizontalSplit,
         JSplitPane verticalSplit,
-        FileDetails fileDetails
+        SourceFileInfo fileInfo
     ) {};
     
     private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
-    private Map<JComponent, SourceCodeAreaAndFileDetails> openedFileComponents;
-    private SourceCodeAreaAndFileDetails openedFileComponent;
-    private Set<String> openedFiles;
-    private boolean discardFirstChange;
+    private Map<JComponent, EditorTab> editorTabs;
+    private EditorTab activeTab;
+    private Set<String> openedFilePaths;
+    private boolean skipInitialTabChange;
 
     public MainWindow() {
 
@@ -76,10 +76,10 @@ public class MainWindow extends javax.swing.JFrame {
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
         ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
 
-        openedFileComponents = new HashMap<>();
-        openedFileComponent = null;
-        openedFiles = new HashSet<>();
-        discardFirstChange = true;
+        editorTabs = new HashMap<>();
+        activeTab = null;
+        openedFilePaths = new HashSet<>();
+        skipInitialTabChange = true;
 
         try {
             openFile( new File( "cprl-sources/Correct_101.cprl" ) );
@@ -186,20 +186,20 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileAndRunActionPerformed
-        compile( openedFileComponent.fileDetails() );
-        assemble( openedFileComponent.fileDetails() );
-        run( openedFileComponent.fileDetails() );
+        compile( activeTab.fileInfo() );
+        assemble( activeTab.fileInfo() );
+        run( activeTab.fileInfo() );
     }//GEN-LAST:event_btnCompileAndRunActionPerformed
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
 
-        if ( discardFirstChange ) {
-            discardFirstChange = false;
+        if ( skipInitialTabChange ) {
+            skipInitialTabChange = false;
             return;
         }
 
         JComponent c = (JComponent) tabbedPaneSourceCode.getSelectedComponent();
-        openedFileComponent = openedFileComponents.get( c );
+        activeTab = editorTabs.get( c );
 
     }//GEN-LAST:event_tabbedPaneSourceCodeStateChanged
 
@@ -233,10 +233,10 @@ public class MainWindow extends javax.swing.JFrame {
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
 
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            SourceCodeAreaAndFileDetails fileData = openedFileComponents.get( c );
+            EditorTab tab = editorTabs.get( c );
 
-            try ( FileWriter fw = new FileWriter( fileData.fileDetails.file ) ) {
-                fw.write( fileData.sourceCodeArea.getText() );
+            try ( FileWriter fw = new FileWriter( tab.fileInfo.file ) ) {
+                fw.write( tab.sourceCodeArea.getText() );
             } catch ( IOException exc ) {
                 showErrorMessage( exc );
             }
@@ -251,11 +251,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void openFile( File file ) throws IOException {
 
-        if ( openedFiles.contains( file.getAbsolutePath() ) ) {
+        if ( openedFilePaths.contains( file.getAbsolutePath() ) ) {
             return;
         }
 
-        FileDetails fileDetails = getFileDetails( file );
+        SourceFileInfo fileInfo = getSourceFileInfo( file );
 
         RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
         sourceCodeArea.setCodeFoldingEnabled( true );
@@ -297,23 +297,23 @@ public class MainWindow extends javax.swing.JFrame {
         horizontalSplit.setRightComponent( assemblyScroll );
 
         container.add( horizontalSplit, BorderLayout.CENTER );
-        addClosableTab( fileDetails.file.getName(), container );
+        addClosableTab( fileInfo.file.getName(), container );
         tabbedPaneSourceCode.setSelectedComponent( container );
 
-        SourceCodeAreaAndFileDetails sourceDetails = new SourceCodeAreaAndFileDetails(
+        EditorTab tab = new EditorTab(
             sourceCodeArea,
             consoleTextPane,
             assemblyTextPane,
             horizontalSplit,
             verticalSplit,
-            fileDetails
+            fileInfo
         );
-        openedFileComponents.put( container, sourceDetails );
-        openedFileComponent = sourceDetails;
-        openedFiles.add( sourceDetails.fileDetails.file().getAbsolutePath() );
-        loadSourceCode( fileDetails.file(), sourceCodeArea );
+        editorTabs.put( container, tab );
+        activeTab = tab;
+        openedFilePaths.add( tab.fileInfo.file().getAbsolutePath() );
+        loadSourceCode( fileInfo.file(), sourceCodeArea );
 
-        adjustSplitPanes( openedFileComponent );
+        adjustSplitPanes( activeTab );
 
     }
 
@@ -331,11 +331,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
-    private void compile( FileDetails fileDetails ) {
+    private void compile( SourceFileInfo fileInfo ) {
 
         try {
 
-            Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileDetails.parentDirPath, fileDetails.fileNameWithoutExt ) ) );
+            Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
             c.compile();
 
         } catch ( IOException exc ) {
@@ -344,11 +344,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
-    private void assemble( FileDetails fileDetails ) {
+    private void assemble( SourceFileInfo fileInfo ) {
 
         try {
 
-            Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileDetails.parentDirPath, fileDetails.fileNameWithoutExt ) ) );
+            Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
             a.assemble();
 
         } catch ( IOException exc ) {
@@ -357,11 +357,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
-    private void run( FileDetails fileDetails ) {
+    private void run( SourceFileInfo fileInfo ) {
 
         try {
 
-            FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileDetails.parentDirPath, fileDetails.fileNameWithoutExt ) ) );
+            FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
 
             Instruction.resetMaps();
             CVM vm = new CVM( 8192 ); // 8KB of memory
@@ -383,26 +383,26 @@ public class MainWindow extends javax.swing.JFrame {
         );
     }
 
-    private void adjustSplitPanes( SourceCodeAreaAndFileDetails fileData ) {
+    private void adjustSplitPanes( EditorTab tab ) {
         SwingUtilities.invokeLater( () -> {
-            fileData.horizontalSplit.setDividerLocation( 0.8 );
-            fileData.verticalSplit.setDividerLocation( 0.8 );
+            tab.horizontalSplit.setDividerLocation( 0.8 );
+            tab.verticalSplit.setDividerLocation( 0.8 );
         } );
     }
 
     private void adjustAllSplitPanes() {
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            SourceCodeAreaAndFileDetails fileData = openedFileComponents.get( c );
-            adjustSplitPanes( fileData );
+            EditorTab tab = editorTabs.get( c );
+            adjustSplitPanes( tab );
         }
     }
 
-    private FileDetails getFileDetails( File file ) {
+    private SourceFileInfo getSourceFileInfo( File file ) {
         String parentDirPath = file.getParentFile().getPath();
-        String fileNameWithoudExt = file.getName();
-        fileNameWithoudExt = fileNameWithoudExt.substring( 0, fileNameWithoudExt.lastIndexOf( "." ) );
-        return new FileDetails( file, parentDirPath, fileNameWithoudExt );
+        String fileNameWithoutExt = file.getName();
+        fileNameWithoutExt = fileNameWithoutExt.substring( 0, fileNameWithoutExt.lastIndexOf( "." ) );
+        return new SourceFileInfo( file, parentDirPath, fileNameWithoutExt );
     }
 
     private void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
@@ -465,8 +465,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void closeTab( int index ) {
         JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( index );
-        SourceCodeAreaAndFileDetails data = openedFileComponents.remove( c );
-        openedFiles.remove( data.fileDetails.file.getAbsolutePath() );
+        EditorTab tab = editorTabs.remove( c );
+        openedFilePaths.remove( tab.fileInfo.file.getAbsolutePath() );
         tabbedPaneSourceCode.remove( index );
     }
     
