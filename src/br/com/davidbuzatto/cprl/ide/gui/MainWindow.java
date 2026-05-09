@@ -99,6 +99,8 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar = new javax.swing.JToolBar();
         btnNew = new javax.swing.JButton();
         btnOpen = new javax.swing.JButton();
+        btnSave = new javax.swing.JButton();
+        btnSaveAs = new javax.swing.JButton();
         btnSaveAll = new javax.swing.JButton();
         sep01 = new javax.swing.JToolBar.Separator();
         btnCompileAndRun = new javax.swing.JButton();
@@ -113,6 +115,11 @@ public class MainWindow extends javax.swing.JFrame {
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
+            }
+        });
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
             }
         });
 
@@ -133,6 +140,20 @@ public class MainWindow extends javax.swing.JFrame {
         btnOpen.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         btnOpen.addActionListener(this::btnOpenActionPerformed);
         toolbar.add(btnOpen);
+
+        btnSave.setText("Save");
+        btnSave.setFocusable(false);
+        btnSave.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnSave.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnSave.addActionListener(this::btnSaveActionPerformed);
+        toolbar.add(btnSave);
+
+        btnSaveAs.setText("Save As");
+        btnSaveAs.setFocusable(false);
+        btnSaveAs.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnSaveAs.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnSaveAs.addActionListener(this::btnSaveAsActionPerformed);
+        toolbar.add(btnSaveAs);
 
         btnSaveAll.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"))); // NOI18N
         btnSaveAll.setToolTipText("Save All Files");
@@ -249,6 +270,18 @@ public class MainWindow extends javax.swing.JFrame {
         adjustAllSplitPanes();
     }//GEN-LAST:event_formComponentResized
 
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        
+    }//GEN-LAST:event_formWindowClosing
+
+    private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnSaveActionPerformed
+
+    private void btnSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveAsActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnSaveAsActionPerformed
+
     private void openFile( File file ) throws IOException {
 
         if ( openedFilePaths.contains( file.getAbsolutePath() ) ) {
@@ -310,8 +343,8 @@ public class MainWindow extends javax.swing.JFrame {
         );
         editorTabs.put( container, tab );
         activeTab = tab;
-        openedFilePaths.add( tab.fileInfo.file().getAbsolutePath() );
-        loadSourceCode( fileInfo.file(), sourceCodeArea );
+        openedFilePaths.add( tab.fileInfo.file.getAbsolutePath() );
+        loadSourceCode( fileInfo.file, sourceCodeArea );
 
         adjustSplitPanes( activeTab );
 
@@ -480,7 +513,9 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JButton btnDisassembly;
     private javax.swing.JButton btnNew;
     private javax.swing.JButton btnOpen;
+    private javax.swing.JButton btnSave;
     private javax.swing.JButton btnSaveAll;
+    private javax.swing.JButton btnSaveAs;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenu menuHelp;
     private javax.swing.JToolBar.Separator sep01;
