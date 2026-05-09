@@ -20,15 +20,14 @@ public class TestTokenMaker extends AbstractTokenMaker {
 
         TokenMap tokenMap = new TokenMap();
 
-        tokenMap.put( "case", Token.RESERVED_WORD );
-        tokenMap.put( "for", Token.RESERVED_WORD );
         tokenMap.put( "if", Token.RESERVED_WORD );
+        tokenMap.put( "loop", Token.RESERVED_WORD );
         tokenMap.put( "while", Token.RESERVED_WORD );
         tokenMap.put( "Integer", Token.RESERVED_WORD );
 
-        tokenMap.put( "printf", Token.FUNCTION );
+        /*tokenMap.put( "printf", Token.FUNCTION );
         tokenMap.put( "scanf", Token.FUNCTION );
-        tokenMap.put( "fopen", Token.FUNCTION );
+        tokenMap.put( "fopen", Token.FUNCTION );*/
 
         return tokenMap;
 
