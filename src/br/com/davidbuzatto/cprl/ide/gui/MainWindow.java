@@ -58,7 +58,7 @@ public class MainWindow extends javax.swing.JFrame {
     private static record EditorTab(
         RSyntaxTextArea sourceCodeArea,
         JTextPane consoleTextPane,
-        JTextPane assemblyTextPane,
+        RSyntaxTextArea assemblySourceCode,
         JSplitPane horizontalSplit,
         JSplitPane verticalSplit,
         AtomicReference<SourceFileInfo> fileInfoRef,
@@ -215,13 +215,24 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileAndRunActionPerformed
-        if ( activeTab == null ) return;
-        if ( !saveFile( activeTab ) ) return;
+        
+        if ( activeTab == null ) {
+            return;
+        }
+        
+        if ( !saveFile( activeTab ) ) {
+            return;
+        }
+        
         SourceFileInfo fi = activeTab.fileInfoRef.get();
-        if ( fi == null ) return;
-        compile( fi );
-        assemble( fi );
-        run( fi );
+        if ( fi == null ) {
+            return;
+        }
+        
+        compile( activeTab );
+        assemble( activeTab );
+        run( activeTab );
+        
     }//GEN-LAST:event_btnCompileAndRunActionPerformed
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
@@ -416,27 +427,49 @@ public class MainWindow extends javax.swing.JFrame {
     // Compiler pipeline
     // -------------------------------------------------------------------------
 
-    private void compile( SourceFileInfo fileInfo ) {
+    private void compile( EditorTab editorTab ) {
         try {
-            Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
+            File sourceFile = new File( 
+                String.format( 
+                    "%s/%s.cprl", 
+                    editorTab.fileInfoRef.get().parentDirPath, 
+                    editorTab.fileInfoRef.get().fileNameWithoutExt
+                )
+            );
+            Compiler c = new Compiler( sourceFile );
             c.compile();
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
     }
 
-    private void assemble( SourceFileInfo fileInfo ) {
+    private void assemble( EditorTab editorTab ) {
         try {
-            Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
+            File asmFile = new File( 
+                String.format( 
+                    "%s/%s.asm",
+                    editorTab.fileInfoRef.get().parentDirPath,
+                    editorTab.fileInfoRef.get().fileNameWithoutExt
+                )
+            );
+            Assembler a = new Assembler( asmFile );
             a.assemble();
+            loadSourceCode( asmFile, editorTab.assemblySourceCode );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
     }
 
-    private void run( SourceFileInfo fileInfo ) {
+    private void run( EditorTab editorTab ) {
         try {
-            FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
+            File objFile = new File(
+                String.format(
+                    "%s/%s.obj",
+                    editorTab.fileInfoRef.get().parentDirPath,
+                    editorTab.fileInfoRef.get().fileNameWithoutExt
+                )
+            );
+            FileInputStream o = new FileInputStream( objFile );
             Instruction.resetMaps();
             CVM vm = new CVM( 8192 ); // 8KB of memory
             vm.loadProgram( o );
@@ -476,9 +509,22 @@ public class MainWindow extends javax.swing.JFrame {
         consoleTextPane.setFont( DEFAULT_FONT );
         JScrollPane consoleScroll = new JScrollPane( consoleTextPane );
 
-        JTextPane assemblyTextPane = new JTextPane();
-        assemblyTextPane.setFont( DEFAULT_FONT );
-        JScrollPane assemblyScroll = new JScrollPane( assemblyTextPane );
+        RSyntaxTextArea assemblySourceCode = new RSyntaxTextArea();
+        assemblySourceCode.setCodeFoldingEnabled( false );
+        assemblySourceCode.setBackground( new Color( 0x3F3F3F, false ) );
+        assemblySourceCode.setCurrentLineHighlightColor( Color.BLACK );
+        assemblySourceCode.setSelectionColor( Color.BLACK );
+        assemblySourceCode.setFont( DEFAULT_FONT );
+        assemblySourceCode.setAntiAliasingEnabled( true );
+        assemblySourceCode.setAutoIndentEnabled( false );
+        assemblySourceCode.setMatchedBracketBGColor( Color.PINK.darker() );
+        assemblySourceCode.setTabsEmulated( true );
+        assemblySourceCode.setTabSize( 4 );
+        assemblySourceCode.setSyntaxEditingStyle( "text/cprl" );
+        assemblySourceCode.setEditable( false );
+        applyColorScheme( assemblySourceCode );
+        
+        RTextScrollPane assemblyScroll = new RTextScrollPane( assemblySourceCode );
 
         JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
         verticalSplit.setTopComponent( sp );
@@ -497,7 +543,7 @@ public class MainWindow extends javax.swing.JFrame {
         EditorTab tab = new EditorTab(
             sourceCodeArea,
             consoleTextPane,
-            assemblyTextPane,
+            assemblySourceCode,
             horizontalSplit,
             verticalSplit,
             new AtomicReference<>( fileInfo ),
@@ -613,8 +659,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void adjustSplitPanes( EditorTab tab ) {
         SwingUtilities.invokeLater( () -> {
-            tab.horizontalSplit.setDividerLocation( 0.8 );
-            tab.verticalSplit.setDividerLocation( 0.8 );
+            tab.horizontalSplit.setDividerLocation( 0.7 );
+            tab.verticalSplit.setDividerLocation( 0.7 );
         } );
     }
 

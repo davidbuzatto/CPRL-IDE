@@ -6,7 +6,7 @@
 // Move a disk from A to B
 // Move a disk from C to A
 // Move a disk from C to B
-// Move a disk from A to B
+// Move a disk from A to Ba
 
 var numberOfDisks : Integer;
 var t : Char;

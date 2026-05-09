@@ -1,0 +1,11 @@
+   PROGRAM 4
+   LDGADDR 0
+   LDCINT 5
+   STOREW
+   LDCSTR "Hello, World!"
+   PUTSTR
+   LDGADDR 0
+   LOADW
+   PUTINT
+   PUTEOL
+   HALT

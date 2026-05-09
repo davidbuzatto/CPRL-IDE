@@ -1,6 +1,7 @@
 // teste
 // teste 2
 var x : Integer;
+var y : Integer;
 
 begin
     x := 5;
