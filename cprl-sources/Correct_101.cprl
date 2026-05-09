@@ -1,7 +1,7 @@
 // correct output is as follows:
 //  n = 35
 //  c = X
-
+// a
 var   m, n : Integer;
 var   c : Char;
 const five := 5;

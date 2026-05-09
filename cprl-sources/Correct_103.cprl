@@ -1,6 +1,6 @@
 // test identifiers for length and capitalization
 // correct output:     1      2
-
+// a
 var x : Integer;
 var ThisIsAVeryLongIdentifier     : Integer;
 var ThisIsAVeryLongIdentifierAlso : Integer;

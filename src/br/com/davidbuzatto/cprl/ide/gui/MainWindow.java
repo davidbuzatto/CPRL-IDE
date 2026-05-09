@@ -19,6 +19,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -28,9 +30,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import org.fife.ui.rsyntaxtextarea.AbstractTokenMakerFactory;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -51,16 +54,18 @@ public class MainWindow extends javax.swing.JFrame {
         String parentDirPath,
         String fileNameWithoutExt
     ) {};
-    
+
     private static record EditorTab(
         RSyntaxTextArea sourceCodeArea,
         JTextPane consoleTextPane,
         JTextPane assemblyTextPane,
         JSplitPane horizontalSplit,
         JSplitPane verticalSplit,
-        SourceFileInfo fileInfo
+        AtomicReference<SourceFileInfo> fileInfoRef,
+        AtomicBoolean isDirty,
+        JLabel titleLabel
     ) {};
-    
+
     private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
@@ -68,10 +73,12 @@ public class MainWindow extends javax.swing.JFrame {
     private EditorTab activeTab;
     private Set<String> openedFilePaths;
     private boolean skipInitialTabChange;
+    private int untitledCounter;
 
     public MainWindow() {
 
         initComponents();
+        setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
 
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
         ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
@@ -80,6 +87,7 @@ public class MainWindow extends javax.swing.JFrame {
         activeTab = null;
         openedFilePaths = new HashSet<>();
         skipInitialTabChange = true;
+        untitledCounter = 0;
 
         try {
             openFile( new File( "cprl-sources/Correct_101.cprl" ) );
@@ -141,14 +149,14 @@ public class MainWindow extends javax.swing.JFrame {
         btnOpen.addActionListener(this::btnOpenActionPerformed);
         toolbar.add(btnOpen);
 
-        btnSave.setText("Save");
+        btnSave.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk.png"))); // NOI18N
         btnSave.setFocusable(false);
         btnSave.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSave.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         btnSave.addActionListener(this::btnSaveActionPerformed);
         toolbar.add(btnSave);
 
-        btnSaveAs.setText("Save As");
+        btnSaveAs.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_add.png"))); // NOI18N
         btnSaveAs.setFocusable(false);
         btnSaveAs.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSaveAs.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -207,9 +215,13 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileAndRunActionPerformed
-        compile( activeTab.fileInfo() );
-        assemble( activeTab.fileInfo() );
-        run( activeTab.fileInfo() );
+        if ( activeTab == null ) return;
+        if ( !saveFile( activeTab ) ) return;
+        SourceFileInfo fi = activeTab.fileInfoRef.get();
+        if ( fi == null ) return;
+        compile( fi );
+        assemble( fi );
+        run( fi );
     }//GEN-LAST:event_btnCompileAndRunActionPerformed
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
@@ -225,7 +237,7 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_tabbedPaneSourceCodeStateChanged
 
     private void btnNewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNewActionPerformed
-        // TODO add your handling code here:
+        newFile();
     }//GEN-LAST:event_btnNewActionPerformed
 
     private void btnOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenActionPerformed
@@ -250,20 +262,10 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_btnOpenActionPerformed
 
     private void btnSaveAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveAllActionPerformed
-
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
-
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            EditorTab tab = editorTabs.get( c );
-
-            try ( FileWriter fw = new FileWriter( tab.fileInfo.file ) ) {
-                fw.write( tab.sourceCodeArea.getText() );
-            } catch ( IOException exc ) {
-                showErrorMessage( exc );
-            }
-
+            saveFile( editorTabs.get( c ) );
         }
-
     }//GEN-LAST:event_btnSaveAllActionPerformed
 
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
@@ -272,15 +274,60 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         
+        for ( int i = tabbedPaneSourceCode.getTabCount() - 1; i >= 0; i-- ) {
+            
+            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+            EditorTab tab = editorTabs.get( c );
+            
+            if ( tab != null && tab.isDirty.get() ) {
+                
+                tabbedPaneSourceCode.setSelectedIndex( i );
+                
+                int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    "File \"" + tabTitle( tab ) + "\" has unsaved changes. Save before closing?",
+                    "Unsaved Changes",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+                );
+                
+                if ( choice == JOptionPane.YES_OPTION ) {
+                    if ( !saveFile( tab ) ) return;
+                } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
+                    return;
+                }
+                
+            }
+            
+        }
+        
+        System.exit( 0 );
+        
     }//GEN-LAST:event_formWindowClosing
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        // TODO add your handling code here:
+        if ( activeTab != null ) {
+            saveFile( activeTab );
+        }
     }//GEN-LAST:event_btnSaveActionPerformed
 
     private void btnSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveAsActionPerformed
-        // TODO add your handling code here:
+        if ( activeTab != null ) {
+            saveFileAs( activeTab );
+        }
     }//GEN-LAST:event_btnSaveAsActionPerformed
+
+    // -------------------------------------------------------------------------
+    // File management
+    // -------------------------------------------------------------------------
+
+    private void newFile() {
+
+        String title = "Untitled-" + ( ++untitledCounter );
+        EditorTab tab = buildEditorTab( title, null );
+        registerDocumentListener( tab );
+
+    }
 
     private void openFile( File file ) throws IOException {
 
@@ -289,65 +336,66 @@ public class MainWindow extends javax.swing.JFrame {
         }
 
         SourceFileInfo fileInfo = getSourceFileInfo( file );
+        EditorTab tab = buildEditorTab( file.getName(), fileInfo );
+        loadSourceCode( file, tab.sourceCodeArea );
+        SwingUtilities.invokeLater( () -> markClean( tab ) );
+        registerDocumentListener( tab );
 
-        RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
-        sourceCodeArea.setCodeFoldingEnabled( true );
-        sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ) );
-        sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
-        sourceCodeArea.setSelectionColor( Color.BLACK );
-        sourceCodeArea.setFont( DEFAULT_FONT );
-        sourceCodeArea.setAntiAliasingEnabled( true );
-        sourceCodeArea.setCodeFoldingEnabled( false );
-        sourceCodeArea.setAutoIndentEnabled( false );
-        sourceCodeArea.setMatchedBracketBGColor( Color.PINK.darker() );
-        sourceCodeArea.setTabsEmulated( true );
-        sourceCodeArea.setTabSize( 4 );
+    }
 
-        sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
-        applyColorScheme( sourceCodeArea );
+    /**
+     * Saves the active file. If the file has no path (new/untitled), opens a
+     * Save As dialog. Returns false if the user cancels the dialog.
+     */
+    private boolean saveFile( EditorTab tab ) {
+        if ( tab.fileInfoRef.get() == null ) {
+            return saveFileAs( tab );
+        }
+        writeFile( tab );
+        return true;
+    }
 
-        RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
+    /**
+     * Always opens a Save As dialog. Returns false if the user cancels.
+     */
+    private boolean saveFileAs( EditorTab tab ) {
 
-        // building tab
-        JPanel container = new JPanel();
-        container.setLayout( new BorderLayout() );
+        JFileChooser jfc = new JFileChooser( "./" );
+        jfc.setDialogTitle( "Save As" );
+        jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
 
-        JSplitPane horizontalSplit = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT );
-        JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
+        if ( jfc.showSaveDialog( this ) != JFileChooser.APPROVE_OPTION ) {
+            return false;
+        }
 
-        JTextPane consoleTextPane = new JTextPane();
-        consoleTextPane.setFont( DEFAULT_FONT );
-        JScrollPane consoleScroll = new JScrollPane( consoleTextPane );
+        File file = jfc.getSelectedFile();
+        if ( !file.getName().endsWith( ".cprl" ) ) {
+            file = new File( file.getAbsolutePath() + ".cprl" );
+        }
 
-        JTextPane assemblyTextPane = new JTextPane();
-        assemblyTextPane.setFont( DEFAULT_FONT );
-        JScrollPane assemblyScroll = new JScrollPane( assemblyTextPane );
+        // Remove old path from tracking (if any)
+        SourceFileInfo oldInfo = tab.fileInfoRef.get();
+        if ( oldInfo != null ) {
+            openedFilePaths.remove( oldInfo.file.getAbsolutePath() );
+        }
 
-        verticalSplit.setTopComponent( sp );
-        verticalSplit.setBottomComponent( consoleScroll );
+        SourceFileInfo newInfo = getSourceFileInfo( file );
+        tab.fileInfoRef.set( newInfo );
+        openedFilePaths.add( file.getAbsolutePath() );
 
-        horizontalSplit.setLeftComponent( verticalSplit );
-        horizontalSplit.setRightComponent( assemblyScroll );
+        writeFile( tab );
+        return true;
 
-        container.add( horizontalSplit, BorderLayout.CENTER );
-        addClosableTab( fileInfo.file.getName(), container );
-        tabbedPaneSourceCode.setSelectedComponent( container );
+    }
 
-        EditorTab tab = new EditorTab(
-            sourceCodeArea,
-            consoleTextPane,
-            assemblyTextPane,
-            horizontalSplit,
-            verticalSplit,
-            fileInfo
-        );
-        editorTabs.put( container, tab );
-        activeTab = tab;
-        openedFilePaths.add( tab.fileInfo.file.getAbsolutePath() );
-        loadSourceCode( fileInfo.file, sourceCodeArea );
-
-        adjustSplitPanes( activeTab );
-
+    /** Writes tab content to disk and marks the tab as clean. */
+    private void writeFile( EditorTab tab ) {
+        try ( FileWriter fw = new FileWriter( tab.fileInfoRef.get().file ) ) {
+            fw.write( tab.sourceCodeArea.getText() );
+            markClean( tab );
+        } catch ( IOException exc ) {
+            showErrorMessage( exc );
+        }
     }
 
     private void loadSourceCode( File file, RSyntaxTextArea sourceCodeArea ) throws IOException {
@@ -364,57 +412,204 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
+    // -------------------------------------------------------------------------
+    // Compiler pipeline
+    // -------------------------------------------------------------------------
+
     private void compile( SourceFileInfo fileInfo ) {
-
         try {
-
             Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
             c.compile();
-
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
-
     }
 
     private void assemble( SourceFileInfo fileInfo ) {
-
         try {
-
             Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
             a.assemble();
-
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
-
     }
 
     private void run( SourceFileInfo fileInfo ) {
-
         try {
-
             FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileInfo.parentDirPath, fileInfo.fileNameWithoutExt ) ) );
-
             Instruction.resetMaps();
             CVM vm = new CVM( 8192 ); // 8KB of memory
             vm.loadProgram( o );
             vm.run();
-
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
-
     }
 
-    private void showErrorMessage( Exception exc ) {
-        JOptionPane.showMessageDialog(
-            null,
-            exc.getMessage(),
-            "ERRO",
-            JOptionPane.ERROR_MESSAGE
+    // -------------------------------------------------------------------------
+    // Tab management
+    // -------------------------------------------------------------------------
+
+    /**
+     * Builds all UI components for an editor tab, registers it in the map and
+     * sets it as active. fileInfo may be null for new/untitled files.
+     */
+    private EditorTab buildEditorTab( String title, SourceFileInfo fileInfo ) {
+
+        RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
+        sourceCodeArea.setCodeFoldingEnabled( false );
+        sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ) );
+        sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
+        sourceCodeArea.setSelectionColor( Color.BLACK );
+        sourceCodeArea.setFont( DEFAULT_FONT );
+        sourceCodeArea.setAntiAliasingEnabled( true );
+        sourceCodeArea.setAutoIndentEnabled( false );
+        sourceCodeArea.setMatchedBracketBGColor( Color.PINK.darker() );
+        sourceCodeArea.setTabsEmulated( true );
+        sourceCodeArea.setTabSize( 4 );
+        sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
+        applyColorScheme( sourceCodeArea );
+
+        RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
+
+        JTextPane consoleTextPane = new JTextPane();
+        consoleTextPane.setFont( DEFAULT_FONT );
+        JScrollPane consoleScroll = new JScrollPane( consoleTextPane );
+
+        JTextPane assemblyTextPane = new JTextPane();
+        assemblyTextPane.setFont( DEFAULT_FONT );
+        JScrollPane assemblyScroll = new JScrollPane( assemblyTextPane );
+
+        JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
+        verticalSplit.setTopComponent( sp );
+        verticalSplit.setBottomComponent( consoleScroll );
+
+        JSplitPane horizontalSplit = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT );
+        horizontalSplit.setLeftComponent( verticalSplit );
+        horizontalSplit.setRightComponent( assemblyScroll );
+
+        JPanel container = new JPanel( new BorderLayout() );
+        container.add( horizontalSplit, BorderLayout.CENTER );
+
+        JLabel titleLabel = addClosableTab( title, container );
+        tabbedPaneSourceCode.setSelectedComponent( container );
+
+        EditorTab tab = new EditorTab(
+            sourceCodeArea,
+            consoleTextPane,
+            assemblyTextPane,
+            horizontalSplit,
+            verticalSplit,
+            new AtomicReference<>( fileInfo ),
+            new AtomicBoolean( false ),
+            titleLabel
         );
+
+        editorTabs.put( container, tab );
+        activeTab = tab;
+
+        if ( fileInfo != null ) {
+            openedFilePaths.add( fileInfo.file.getAbsolutePath() );
+        }
+
+        adjustSplitPanes( tab );
+        return tab;
+
     }
+
+    private JLabel addClosableTab( String title, Component content ) {
+
+        tabbedPaneSourceCode.addTab( title, content );
+        int index = tabbedPaneSourceCode.indexOfComponent( content );
+
+        JPanel tabPanel = new JPanel( new FlowLayout( FlowLayout.LEFT, 0, 0 ) );
+        tabPanel.setOpaque( false );
+
+        JLabel titleLabel = new JLabel( title );
+        titleLabel.setBorder( BorderFactory.createEmptyBorder( 0, 0, 0, 5 ) );
+
+        JButton closeButton = new JButton( "x" );
+        closeButton.setFont( closeButton.getFont().deriveFont( 10f ) );
+        closeButton.setFocusable( false );
+
+        closeButton.addActionListener( e -> {
+            int i = tabbedPaneSourceCode.indexOfTabComponent( tabPanel );
+            if ( i != -1 ) {
+                closeTab( i );
+            }
+        } );
+
+        tabPanel.add( titleLabel );
+        tabPanel.add( closeButton );
+        tabbedPaneSourceCode.setTabComponentAt( index, tabPanel );
+
+        return titleLabel;
+
+    }
+
+    private void closeTab( int index ) {
+
+        JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( index );
+        EditorTab tab = editorTabs.get( c );
+
+        if ( tab.isDirty.get() ) {
+            tabbedPaneSourceCode.setSelectedIndex( index );
+            int choice = JOptionPane.showConfirmDialog(
+                this,
+                "File \"" + tabTitle( tab ) + "\" has unsaved changes. Save before closing?",
+                "Unsaved Changes",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            if ( choice == JOptionPane.YES_OPTION ) {
+                if ( !saveFile( tab ) ) return;
+            } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
+                return;
+            }
+        }
+
+        editorTabs.remove( c );
+        SourceFileInfo fi = tab.fileInfoRef.get();
+        if ( fi != null ) {
+            openedFilePaths.remove( fi.file.getAbsolutePath() );
+        }
+        tabbedPaneSourceCode.remove( index );
+
+    }
+
+    // -------------------------------------------------------------------------
+    // Dirty state tracking
+    // -------------------------------------------------------------------------
+
+    private void registerDocumentListener( EditorTab tab ) {
+        tab.sourceCodeArea.getDocument().addDocumentListener( new DocumentListener() {
+            @Override public void insertUpdate( DocumentEvent e ) { markDirty( tab ); }
+            @Override public void removeUpdate( DocumentEvent e ) { markDirty( tab ); }
+            @Override public void changedUpdate( DocumentEvent e ) { }
+        } );
+    }
+
+    private void markDirty( EditorTab tab ) {
+        if ( !tab.isDirty.get() ) {
+            tab.isDirty.set( true );
+            tab.titleLabel.setText( "* " + tabTitle( tab ) );
+        }
+    }
+
+    private void markClean( EditorTab tab ) {
+        tab.isDirty.set( false );
+        tab.titleLabel.setText( tabTitle( tab ) );
+    }
+
+    /** Returns the clean title for the tab (strips leading "* " if present). */
+    private String tabTitle( EditorTab tab ) {
+        String current = tab.titleLabel.getText();
+        return current.startsWith( "* " ) ? current.substring( 2 ) : current;
+    }
+
+    // -------------------------------------------------------------------------
+    // Layout helpers
+    // -------------------------------------------------------------------------
 
     private void adjustSplitPanes( EditorTab tab ) {
         SwingUtilities.invokeLater( () -> {
@@ -426,10 +621,13 @@ public class MainWindow extends javax.swing.JFrame {
     private void adjustAllSplitPanes() {
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            EditorTab tab = editorTabs.get( c );
-            adjustSplitPanes( tab );
+            adjustSplitPanes( editorTabs.get( c ) );
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Utilities
+    // -------------------------------------------------------------------------
 
     private SourceFileInfo getSourceFileInfo( File file ) {
         String parentDirPath = file.getParentFile().getPath();
@@ -443,8 +641,6 @@ public class MainWindow extends javax.swing.JFrame {
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
 
         Font plain = DEFAULT_FONT;
-        //Font bold = DEFAULT_FONT.deriveFont( Font.BOLD );
-        //Font italic = DEFAULT_FONT.deriveFont( Font.ITALIC );
 
         scheme.getStyle( Token.RESERVED_WORD ).font = plain;
         scheme.getStyle( Token.COMMENT_EOL ).font = plain;
@@ -467,42 +663,15 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
-    public void addClosableTab( String title, Component content ) {
-
-        tabbedPaneSourceCode.addTab( title, content );
-        int index = tabbedPaneSourceCode.indexOfComponent( content );
-
-        JPanel tabPanel = new JPanel( new FlowLayout( FlowLayout.LEFT, 0, 0 ) );
-        tabPanel.setOpaque( false );
-
-        JLabel titleLabel = new JLabel( title );
-        titleLabel.setBorder( BorderFactory.createEmptyBorder( 0, 0, 0, 5 ) );
-
-        JButton closeButton = new JButton( "x" );
-        closeButton.setFont( closeButton.getFont().deriveFont( 10f ) );
-        closeButton.setFocusable( false );
-
-        closeButton.addActionListener( e -> {
-            int i = tabbedPaneSourceCode.indexOfTabComponent( tabPanel );
-            if ( i != -1 ) {
-                closeTab( i );
-            }
-        });
-
-        tabPanel.add( titleLabel );
-        tabPanel.add( closeButton );
-
-        tabbedPaneSourceCode.setTabComponentAt( index, tabPanel );
-
+    private void showErrorMessage( Exception exc ) {
+        JOptionPane.showMessageDialog(
+            null,
+            exc.getMessage(),
+            "Error",
+            JOptionPane.ERROR_MESSAGE
+        );
     }
 
-    private void closeTab( int index ) {
-        JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( index );
-        EditorTab tab = editorTabs.remove( c );
-        openedFilePaths.remove( tab.fileInfo.file.getAbsolutePath() );
-        tabbedPaneSourceCode.remove( index );
-    }
-    
     public static void main( String args[] ) {
         FlatDarkLaf.setup();
         SwingUtilities.invokeLater( () -> new MainWindow().setVisible( true ) );
