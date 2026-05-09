@@ -8,6 +8,7 @@ import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Point;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -38,9 +39,9 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class MainWindow extends javax.swing.JFrame {
     
-    private record FileDetails( File file, String parentDirPath, String fileNameWithoutExt ) {};
+    private static record FileDetails( File file, String parentDirPath, String fileNameWithoutExt ) {};
     
-    private record SourceCodeAreaAndFileDetails( 
+    private static record SourceCodeAreaAndFileDetails( 
         RSyntaxTextArea sourceCodeArea, 
         JTextPane consoleTextPane,
         JTextPane assemblyTextPane,
@@ -49,24 +50,29 @@ public class MainWindow extends javax.swing.JFrame {
         FileDetails fileDetails
     ) {};
     
+    private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
+    private final AbstractTokenMakerFactory ATMF;
+    
     private Map<JComponent, SourceCodeAreaAndFileDetails> openedFiles;
     private SourceCodeAreaAndFileDetails currentOpenedFile;
     private boolean discardFirstChange;
     
-    private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
-    
     public MainWindow() {
         
         initComponents();
+        
+        ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
+        ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
+        
         openedFiles = new HashMap<>();
         currentOpenedFile = null;
         discardFirstChange = true;
         
         try {
             openFile( new File( "C:/Users/David/Desktop/trabalhando/Hanoi.cprl" ) );
-            openFile( new File( "C:/Users/David/Desktop/trabalhando/test.cprl" ) );
+            //openFile( new File( "C:/Users/David/Desktop/trabalhando/test.cprl" ) );
         } catch ( IOException exc ) {
-            exc.printStackTrace();
+            showErrorMessage( exc );
         }
         
     }
@@ -208,7 +214,7 @@ public class MainWindow extends javax.swing.JFrame {
                 try {
                     openFile( selectedFile );
                 } catch ( IOException exc ) {
-                    exc.printStackTrace();
+                    showErrorMessage( exc );
                 }
             }
         }
@@ -225,7 +231,7 @@ public class MainWindow extends javax.swing.JFrame {
             try ( FileWriter fw = new FileWriter( fileData.fileDetails.file ) ) {
                 fw.write( fileData.sourceCodeArea.getText() );
             } catch ( IOException exc ) {
-                exc.printStackTrace();
+                showErrorMessage( exc );
             }
             
         }
@@ -249,39 +255,14 @@ public class MainWindow extends javax.swing.JFrame {
         FileDetails fileDetails = getFileDetails( file );
         
         RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
-        //sourceCodeArea.setSyntaxEditingStyle( SyntaxConstants.SYNTAX_STYLE_JAVA );
         sourceCodeArea.setCodeFoldingEnabled( true );
         sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ));
         sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
         sourceCodeArea.setFont( DEFAULT_FONT );
-        
-        AbstractTokenMakerFactory atmf = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
-        atmf.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.TestTokenMaker" );
         sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
+        applyColorScheme( sourceCodeArea );
         
         RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
-        
-        SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
-        scheme.getStyle( Token.ANNOTATION ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.COMMENT_DOCUMENTATION ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.COMMENT_EOL ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.COMMENT_KEYWORD ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.COMMENT_MARKUP ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.COMMENT_MULTILINE ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.FUNCTION ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.IDENTIFIER ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.LITERAL_CHAR ).foreground = new Color( 0x9ECBFF, false );
-        scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground = new Color( 0x79B8FF, false );
-        scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x9ECBFF, false );
-        scheme.getStyle( Token.NULL ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.OPERATOR ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.RESERVED_WORD ).foreground = new Color( 0xF97583, false );
-        scheme.getStyle( Token.RESERVED_WORD_2 ).foreground = new Color( 0xB392F0, false );
-        scheme.getStyle( Token.SEPARATOR ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.VARIABLE ).foreground = new Color( 0xFF8040, false );
-        scheme.getStyle( Token.WHITESPACE ).foreground = new Color( 0xFFFFFF, false );
-        sourceCodeArea.revalidate();
         
         // building tab
         JPanel container = new JPanel();
@@ -345,12 +326,7 @@ public class MainWindow extends javax.swing.JFrame {
             c.compile();
 
         } catch ( IOException exc ) {
-            JOptionPane.showMessageDialog( 
-                null, 
-                exc.getMessage(), 
-                "ERRO", 
-                JOptionPane.ERROR_MESSAGE
-            );
+            showErrorMessage( exc );
         }
         
     }
@@ -363,12 +339,7 @@ public class MainWindow extends javax.swing.JFrame {
             a.assemble();
 
         } catch ( IOException exc ) {
-            JOptionPane.showMessageDialog( 
-                null, 
-                exc.getMessage(), 
-                "ERRO", 
-                JOptionPane.ERROR_MESSAGE
-            );
+            showErrorMessage( exc );
         }
         
     }
@@ -385,20 +356,24 @@ public class MainWindow extends javax.swing.JFrame {
             vm.run();
 
         } catch ( IOException exc ) {
-            JOptionPane.showMessageDialog( 
-                null, 
-                exc.getMessage(), 
-                "ERRO", 
-                JOptionPane.ERROR_MESSAGE
-            );
+            showErrorMessage( exc );
         }
         
     }
 
+    private void showErrorMessage( Exception exc ) {
+        JOptionPane.showMessageDialog( 
+            null, 
+            exc.getMessage(), 
+            "ERRO", 
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+    
     private void adjustSplitPanes( SourceCodeAreaAndFileDetails fileData ) {
         SwingUtilities.invokeLater( () -> {
-            fileData.horizontalSplit.setDividerLocation( 0.7 );
-            fileData.verticalSplit.setDividerLocation( 0.7 );
+            fileData.horizontalSplit.setDividerLocation( 0.8 );
+            fileData.verticalSplit.setDividerLocation( 0.8 );
         });
     }
     
@@ -415,6 +390,21 @@ public class MainWindow extends javax.swing.JFrame {
         String fileNameWithoudExt = file.getName();
         fileNameWithoudExt = fileNameWithoudExt.substring( 0, fileNameWithoudExt.lastIndexOf( "." ) );
         return new FileDetails( file, parentDirPath, fileNameWithoudExt );
+    }
+    
+    private void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
+        SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
+        scheme.getStyle( Token.COMMENT_EOL ).foreground = new Color( 0x808080, false );
+        scheme.getStyle( Token.IDENTIFIER ).foreground = new Color( 0xFFFFFF, false );
+        scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_CHAR ).foreground = new Color( 0x9ECBFF, false );
+        scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x9ECBFF, false );
+        scheme.getStyle( Token.OPERATOR ).foreground = new Color( 0xFF8040, false );
+        scheme.getStyle( Token.RESERVED_WORD ).foreground = new Color( 0xF97583, false );
+        scheme.getStyle( Token.DATA_TYPE ).foreground = new Color( 0xB392F0, false );
+        scheme.getStyle( Token.SEPARATOR ).foreground = new Color( 0xFFFFFF, false );
+        sourceCodeArea.revalidate();
     }
     
     public static void main( String args[] ) {
