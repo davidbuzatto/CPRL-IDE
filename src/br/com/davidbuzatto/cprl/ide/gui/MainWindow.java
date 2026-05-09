@@ -5,13 +5,18 @@ import edu.citadel.compiler.Compiler;
 import edu.citadel.cvm.CVM;
 import edu.citadel.cvm.assembler.Assembler;
 import edu.citadel.cvm.assembler.ast.Instruction;
+import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
 import javax.swing.JOptionPane;
+import org.fife.ui.rsyntaxtextarea.AbstractTokenMakerFactory;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.fife.ui.rsyntaxtextarea.SyntaxScheme;
+import org.fife.ui.rsyntaxtextarea.Token;
+import org.fife.ui.rsyntaxtextarea.TokenMakerFactory;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
 /**
@@ -21,17 +26,17 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class MainWindow extends javax.swing.JFrame {
     
-    private record FileRep( File file, String parentDirPath, String fileNameWithoutExt ) {};
+    private record FileDetails( File file, String parentDirPath, String fileNameWithoutExt ) {};
     
     private RSyntaxTextArea sourceCodeArea;
     private File currentFile;
-    private FileRep fileRep;
+    private FileDetails fileDetails;
     
-    private static FileRep processFile( File file ) {
+    private static FileDetails getFileDetails( File file ) {
         String parentDirPath = file.getParentFile().getPath();
         String fileNameWithoudExt = file.getName();
         fileNameWithoudExt = fileNameWithoudExt.substring( 0, fileNameWithoudExt.lastIndexOf( "." ) );
-        return new FileRep( file, parentDirPath, fileNameWithoudExt );
+        return new FileDetails( file, parentDirPath, fileNameWithoudExt );
     }
 
     /**
@@ -39,8 +44,9 @@ public class MainWindow extends javax.swing.JFrame {
      */
     public MainWindow() {
         initComponents();
-        currentFile = new File( "C:/Users/David/Desktop/trabalhando/test.cprl" );
-        fileRep = processFile( currentFile );
+        //currentFile = new File( "C:/Users/David/Desktop/trabalhando/test.cprl" );
+        currentFile = new File( "C:/Users/David/Desktop/trabalhando/Hanoi.cprl" );
+        fileDetails = getFileDetails( currentFile );
         setupSourceCodeArea();
     }
 
@@ -145,24 +151,56 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileActionPerformed
-        compile( fileRep );
-        assemble( fileRep );
-        run( fileRep );
+        compile( fileDetails );
+        assemble( fileDetails );
+        run( fileDetails );
     }//GEN-LAST:event_btnCompileActionPerformed
 
-    public static void main( String args[] ) {
-        FlatDarkLaf.setup();
-        java.awt.EventQueue.invokeLater( () -> new MainWindow().setVisible( true ) );
-    }
-    
     private void setupSourceCodeArea() {
-        
-        sourceCodeArea = new RSyntaxTextArea(20, 60);
-        sourceCodeArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JAVA);
-        sourceCodeArea.setCodeFoldingEnabled(true);
+
+        sourceCodeArea = new RSyntaxTextArea( 20, 80 );
+        sourceCodeArea.setSyntaxEditingStyle( SyntaxConstants.SYNTAX_STYLE_JAVA );
+        sourceCodeArea.setCodeFoldingEnabled( true );
+        sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ));
+        //sourceCodeArea.setFont( new Font( "Consolas", Font.PLAIN, 30 ) );
         
         RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
-        tabbedPaneSourceCode.addTab( "teste", sourceCodeArea );
+        tabbedPaneSourceCode.addTab( "teste", sp );
+        
+        AbstractTokenMakerFactory atmf = (AbstractTokenMakerFactory)TokenMakerFactory.getDefaultInstance();
+        atmf.putMapping("text/cprl", "br.com.davidbuzatto.cprl.ide.gui.TestTokenMaker");
+        //sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
+        
+        SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
+        scheme.getStyle( Token.ANNOTATION ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.COMMENT_DOCUMENTATION ).foreground = new Color( 0x808080, false );
+        scheme.getStyle( Token.COMMENT_EOL ).foreground = new Color( 0x808080, false );
+        scheme.getStyle( Token.COMMENT_KEYWORD ).foreground = new Color( 0x808080, false );
+        scheme.getStyle( Token.COMMENT_MARKUP ).foreground = new Color( 0x808080, false );
+        scheme.getStyle( Token.COMMENT_MULTILINE ).foreground = new Color( 0x808080, false );
+        scheme.getStyle( Token.DATA_TYPE ).foreground = new Color( 0xF97583, false );
+        scheme.getStyle( Token.ERROR_CHAR ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.ERROR_IDENTIFIER ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.ERROR_NUMBER_FORMAT ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.ERROR_STRING_DOUBLE ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.FUNCTION ).foreground = new Color( 0xB392F0, false );
+        scheme.getStyle( Token.IDENTIFIER ).foreground = new Color( 0xF97583, false );
+        scheme.getStyle( Token.LITERAL_BACKQUOTE ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_CHAR ).foreground = new Color( 0x9ECBFF, false );
+        scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_NUMBER_FLOAT ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_NUMBER_HEXADECIMAL ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x9ECBFF, false );
+        scheme.getStyle( Token.NULL ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.OPERATOR ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.RESERVED_WORD ).foreground = new Color( 0xFF0000, false );
+        scheme.getStyle( Token.RESERVED_WORD_2 ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.SEPARATOR ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.VARIABLE ).foreground = new Color( 0x000000, false );
+        scheme.getStyle( Token.WHITESPACE ).foreground = new Color( 0x000000, false );
+        
+        sourceCodeArea.revalidate();
         
         try {
             loadSourceCode( currentFile );
@@ -185,11 +223,11 @@ public class MainWindow extends javax.swing.JFrame {
         
     }
     
-    private void compile( FileRep fileRep ) {
+    private void compile( FileDetails fileDetails ) {
 
         try {
 
-            Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileRep.parentDirPath, fileRep.fileNameWithoutExt ) ) );
+            Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileDetails.parentDirPath, fileDetails.fileNameWithoutExt ) ) );
             c.compile();
 
         } catch ( IOException exc ) {
@@ -202,11 +240,11 @@ public class MainWindow extends javax.swing.JFrame {
         
     }
     
-    private void assemble( FileRep fileRep ) {
+    private void assemble( FileDetails fileDetails ) {
 
         try {
 
-            Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileRep.parentDirPath, fileRep.fileNameWithoutExt ) ) );
+            Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileDetails.parentDirPath, fileDetails.fileNameWithoutExt ) ) );
             a.assemble();
 
         } catch ( IOException exc ) {
@@ -219,11 +257,11 @@ public class MainWindow extends javax.swing.JFrame {
         
     }
     
-    private void run( FileRep fileRep ) {
+    private void run( FileDetails fileDetails ) {
 
         try {
 
-            FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileRep.parentDirPath, fileRep.fileNameWithoutExt ) ) );
+            FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileDetails.parentDirPath, fileDetails.fileNameWithoutExt ) ) );
 
             Instruction.resetMaps();
             CVM vm = new CVM( 8192 ); // 8KB of memory
@@ -240,6 +278,11 @@ public class MainWindow extends javax.swing.JFrame {
         
     }
 
+    public static void main( String args[] ) {
+        FlatDarkLaf.setup();
+        java.awt.EventQueue.invokeLater( () -> new MainWindow().setVisible( true ) );
+    }
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnCompile;
     private javax.swing.JButton btnNew;
