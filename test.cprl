@@ -1,6 +1,0 @@
-var x : Integer;
-
-begin
-    x : = 5;
-    writeln "Hello, World!", x;
-end.

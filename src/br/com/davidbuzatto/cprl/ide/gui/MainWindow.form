@@ -46,7 +46,7 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="toolbar" pref="1077" max="32767" attributes="0"/>
+          <Component id="toolbar" pref="829" max="32767" attributes="0"/>
           <Component id="splitPane" alignment="0" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
@@ -55,7 +55,7 @@
           <Group type="102" alignment="0" attributes="0">
               <Component id="toolbar" min="-2" pref="25" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="splitPane" pref="545" max="32767" attributes="0"/>
+              <Component id="splitPane" pref="577" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -71,7 +71,7 @@
         <Component class="javax.swing.JButton" name="btnNew">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/page_white_add.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/page_white_add.png"/>
             </Property>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
@@ -81,7 +81,7 @@
         <Component class="javax.swing.JButton" name="btnOpen">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/folder.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/folder.png"/>
             </Property>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
@@ -91,7 +91,7 @@
         <Component class="javax.swing.JButton" name="btnSaveAll">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/disk_multiple.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"/>
             </Property>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
@@ -103,17 +103,20 @@
         <Component class="javax.swing.JButton" name="btnCompile">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/wrench.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/wrench.png"/>
             </Property>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCompileActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnRun">
           <Properties>
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-              <Image iconType="3" name="/arrow_right.png"/>
+              <Image iconType="3" name="/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"/>
             </Property>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
@@ -124,7 +127,7 @@
     </Container>
     <Container class="javax.swing.JSplitPane" name="splitPane">
       <Properties>
-        <Property name="dividerLocation" type="int" value="300"/>
+        <Property name="dividerLocation" type="int" value="400"/>
         <Property name="orientation" type="int" value="0"/>
       </Properties>
 

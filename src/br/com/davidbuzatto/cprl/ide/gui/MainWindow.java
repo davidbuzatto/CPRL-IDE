@@ -1,9 +1,15 @@
 package br.com.davidbuzatto.cprl.ide.gui;
 
 import com.formdev.flatlaf.FlatDarkLaf;
+import edu.citadel.compiler.Compiler;
+import edu.citadel.cvm.CVM;
+import edu.citadel.cvm.assembler.Assembler;
+import edu.citadel.cvm.assembler.ast.Instruction;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
+import javax.swing.JOptionPane;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
@@ -15,13 +21,26 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class MainWindow extends javax.swing.JFrame {
     
+    private record FileRep( File file, String parentDirPath, String fileNameWithoutExt ) {};
+    
     private RSyntaxTextArea sourceCodeArea;
+    private File currentFile;
+    private FileRep fileRep;
+    
+    private static FileRep processFile( File file ) {
+        String parentDirPath = file.getParentFile().getPath();
+        String fileNameWithoudExt = file.getName();
+        fileNameWithoudExt = fileNameWithoudExt.substring( 0, fileNameWithoudExt.lastIndexOf( "." ) );
+        return new FileRep( file, parentDirPath, fileNameWithoudExt );
+    }
 
     /**
      * Creates new form MainWindow
      */
     public MainWindow() {
         initComponents();
+        currentFile = new File( "C:/Users/David/Desktop/trabalhando/test.cprl" );
+        fileRep = processFile( currentFile );
         setupSourceCodeArea();
     }
 
@@ -55,38 +74,39 @@ public class MainWindow extends javax.swing.JFrame {
 
         toolbar.setRollover(true);
 
-        btnNew.setIcon(new javax.swing.ImageIcon(getClass().getResource("/page_white_add.png"))); // NOI18N
+        btnNew.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/page_white_add.png"))); // NOI18N
         btnNew.setFocusable(false);
         btnNew.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnNew.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         toolbar.add(btnNew);
 
-        btnOpen.setIcon(new javax.swing.ImageIcon(getClass().getResource("/folder.png"))); // NOI18N
+        btnOpen.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/folder.png"))); // NOI18N
         btnOpen.setFocusable(false);
         btnOpen.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnOpen.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         toolbar.add(btnOpen);
 
-        btnSaveAll.setIcon(new javax.swing.ImageIcon(getClass().getResource("/disk_multiple.png"))); // NOI18N
+        btnSaveAll.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"))); // NOI18N
         btnSaveAll.setFocusable(false);
         btnSaveAll.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSaveAll.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         toolbar.add(btnSaveAll);
         toolbar.add(sep01);
 
-        btnCompile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/wrench.png"))); // NOI18N
+        btnCompile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/wrench.png"))); // NOI18N
         btnCompile.setFocusable(false);
         btnCompile.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnCompile.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnCompile.addActionListener(this::btnCompileActionPerformed);
         toolbar.add(btnCompile);
 
-        btnRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/arrow_right.png"))); // NOI18N
+        btnRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"))); // NOI18N
         btnRun.setFocusable(false);
         btnRun.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnRun.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         toolbar.add(btnRun);
 
-        splitPane.setDividerLocation(300);
+        splitPane.setDividerLocation(400);
         splitPane.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
         splitPane.setLeftComponent(tabbedPaneSourceCode);
 
@@ -109,7 +129,7 @@ public class MainWindow extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(toolbar, javax.swing.GroupLayout.DEFAULT_SIZE, 1077, Short.MAX_VALUE)
+            .addComponent(toolbar, javax.swing.GroupLayout.DEFAULT_SIZE, 829, Short.MAX_VALUE)
             .addComponent(splitPane)
         );
         layout.setVerticalGroup(
@@ -117,12 +137,18 @@ public class MainWindow extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addComponent(toolbar, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(splitPane, javax.swing.GroupLayout.DEFAULT_SIZE, 545, Short.MAX_VALUE))
+                .addComponent(splitPane, javax.swing.GroupLayout.DEFAULT_SIZE, 577, Short.MAX_VALUE))
         );
 
         pack();
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
+
+    private void btnCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileActionPerformed
+        compile( fileRep );
+        assemble( fileRep );
+        run( fileRep );
+    }//GEN-LAST:event_btnCompileActionPerformed
 
     public static void main( String args[] ) {
         FlatDarkLaf.setup();
@@ -135,20 +161,20 @@ public class MainWindow extends javax.swing.JFrame {
         sourceCodeArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JAVA);
         sourceCodeArea.setCodeFoldingEnabled(true);
         
-        RTextScrollPane sp = new RTextScrollPane(sourceCodeArea);
+        RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
         tabbedPaneSourceCode.addTab( "teste", sourceCodeArea );
         
         try {
-            loadSourceCode( "test.cprl" );
+            loadSourceCode( currentFile );
         } catch ( Exception exc ) {
             exc.printStackTrace();
         }
         
     }
     
-    private void loadSourceCode( String path ) throws IOException {
+    private void loadSourceCode( File file ) throws IOException {
         
-        Scanner s = new Scanner( new File( path ) );
+        Scanner s = new Scanner( file );
         StringBuilder sb = new StringBuilder();
         
         while ( s.hasNextLine() ) {
@@ -156,6 +182,61 @@ public class MainWindow extends javax.swing.JFrame {
         }
         
         sourceCodeArea.setText( sb.toString() );
+        
+    }
+    
+    private void compile( FileRep fileRep ) {
+
+        try {
+
+            Compiler c = new Compiler( new File( String.format( "%s/%s.cprl", fileRep.parentDirPath, fileRep.fileNameWithoutExt ) ) );
+            c.compile();
+
+        } catch ( IOException exc ) {
+            JOptionPane.showMessageDialog( 
+                    null, 
+                    exc.getMessage(), 
+                    "ERRO", 
+                    JOptionPane.ERROR_MESSAGE );
+        }
+        
+    }
+    
+    private void assemble( FileRep fileRep ) {
+
+        try {
+
+            Assembler a = new Assembler( new File( String.format( "%s/%s.asm", fileRep.parentDirPath, fileRep.fileNameWithoutExt ) ) );
+            a.assemble();
+
+        } catch ( IOException exc ) {
+            JOptionPane.showMessageDialog( 
+                    null, 
+                    exc.getMessage(), 
+                    "ERRO", 
+                    JOptionPane.ERROR_MESSAGE );
+        }
+        
+    }
+    
+    private void run( FileRep fileRep ) {
+
+        try {
+
+            FileInputStream o = new FileInputStream( new File( String.format( "%s/%s.obj", fileRep.parentDirPath, fileRep.fileNameWithoutExt ) ) );
+
+            Instruction.resetMaps();
+            CVM vm = new CVM( 8192 ); // 8KB of memory
+            vm.loadProgram( o );
+            vm.run();
+
+        } catch ( IOException exc ) {
+            JOptionPane.showMessageDialog( 
+                    null, 
+                    exc.getMessage(), 
+                    "ERRO", 
+                    JOptionPane.ERROR_MESSAGE );
+        }
         
     }
 
