@@ -1,14 +1,14 @@
-// programa simples de tabuada
+// multiplication table program
 
 var n : Integer;
 var i : Integer;
 
 begin
 
-    writeln "Tabuada!";
-    write "Entre com um número: ";
+    writeln "Multiplication table!";
+    write "Number: ";
     read n;
-    writeln "Tabuada do ", n;
+    writeln "Multiplication table for ", n;
 
     i := 0;
     while i <= 10 loop

@@ -150,12 +150,12 @@ public class MainWindow extends javax.swing.JFrame {
         skipInitialTabChange = true;
         untitledCounter = 0;
 
-        /*try {
-            openFile( new File( "cprl-sources/Hanoi.cprl" ) );
-            openFile( new File( "cprl-sources/Test.cprl" ) );
+        try {
+            //openFile( new File( "cprl-sources/Hanoi.cprl" ) );
+            openFile( new File( "cprl-sources/MultiplationTable.cprl" ) );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
-        }*/
+        }
 
     }
 
@@ -291,24 +291,9 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileAndRunActionPerformed
-
-        if ( activeTab == null ) {
-            return;
+        if ( activeTab != null ) {
+            executePipeline( activeTab, true, false );
         }
-
-        if ( !saveFile( activeTab ) ) {
-            return;
-        }
-
-        SourceFileInfo fi = activeTab.fileInfoRef.get();
-        if ( fi == null ) {
-            return;
-        }
-
-        compile( activeTab );
-        assemble( activeTab );
-        run( activeTab );
-
     }//GEN-LAST:event_btnCompileAndRunActionPerformed
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
@@ -405,27 +390,15 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_btnSaveAsActionPerformed
 
     private void btnDisassemblyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDisassemblyActionPerformed
-
-        if ( activeTab == null ) {
-            return;
+        if ( activeTab != null ) {
+            executePipeline( activeTab, false, true );
         }
-
-        if ( !saveFile( activeTab ) ) {
-            return;
-        }
-
-        SourceFileInfo fi = activeTab.fileInfoRef.get();
-        if ( fi == null ) {
-            return;
-        }
-
-        compileAndAssemble();
-        disassemble( activeTab );
-
     }//GEN-LAST:event_btnDisassemblyActionPerformed
 
     private void btnCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileActionPerformed
-        compileAndAssemble();
+        if ( activeTab != null ) {
+            executePipeline( activeTab, false, false );
+        }
     }//GEN-LAST:event_btnCompileActionPerformed
 
     private void menuItemAboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemAboutActionPerformed
@@ -468,14 +441,13 @@ public class MainWindow extends javax.swing.JFrame {
 
     /**
      * Saves the file. If new/untitled, opens a Save As dialog.
-     * Returns false if the user cancels.
+     * Returns false if the user cancels or if the write fails.
      */
     private boolean saveFile( EditorTab tab ) {
         if ( tab.fileInfoRef.get() == null ) {
             return saveFileAs( tab );
         }
-        writeFile( tab );
-        return true;
+        return writeFile( tab );
     }
 
     /** Always opens a Save As dialog. Returns false if the user cancels. */
@@ -508,26 +480,28 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
-    /** Writes tab content to disk and marks the tab as clean. */
-    private void writeFile( EditorTab tab ) {
+    /** Writes tab content to disk and marks the tab as clean. Returns false if the write fails. */
+    private boolean writeFile( EditorTab tab ) {
         try ( FileWriter fw = new FileWriter( tab.fileInfoRef.get().file ) ) {
             fw.write( tab.sourceCodeArea.getText() );
             markClean( tab );
+            return true;
         } catch ( IOException exc ) {
             showErrorMessage( exc );
+            return false;
         }
     }
 
     private void loadSourceCode( File file, RSyntaxTextArea sourceCodeArea ) throws IOException {
 
-        Scanner s = new Scanner( file );
-        StringBuilder sb = new StringBuilder();
-
-        while ( s.hasNextLine() ) {
-            sb.append( s.nextLine() ).append( "\n" );
+        try ( Scanner s = new Scanner( file ) ) {
+            StringBuilder sb = new StringBuilder();
+            while ( s.hasNextLine() ) {
+                sb.append( s.nextLine() ).append( "\n" );
+            }
+            sourceCodeArea.setText( sb.toString() );
         }
 
-        sourceCodeArea.setText( sb.toString() );
         SwingUtilities.invokeLater( () -> sourceCodeArea.setCaretPosition( 0 ) );
 
     }
@@ -569,61 +543,106 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
 
-    private void compileAndAssemble() {
+    /**
+     * Unified pipeline: compiles and assembles the active file, then — depending
+     * on the flags — either stops there, runs the CVM, or runs the disassembler.
+     *
+     * All compiler / assembler / CVM / disassembler output is sent to the tab's
+     * internal console so the user never has to look at the IDE output window.
+     *
+     * @param tab             the editor tab to operate on
+     * @param runCvm          true to execute the CVM after a successful build
+     * @param showDisassembly true to disassemble after a successful build
+     */
+    private void executePipeline( EditorTab tab, boolean runCvm, boolean showDisassembly ) {
 
-        if ( activeTab == null ) {
+        // 1. Save file — if untitled, opens Save As; aborts pipeline on cancel or write failure
+        if ( !saveFile( tab ) ) {
             return;
         }
 
-        if ( !saveFile( activeTab ) ) {
-            return;
-        }
-
-        SourceFileInfo fi = activeTab.fileInfoRef.get();
+        SourceFileInfo fi = tab.fileInfoRef.get();
         if ( fi == null ) {
-            return;
+            return; // guard: should not happen after a successful save
         }
 
-        compile( activeTab );
-        assemble( activeTab );
-
-    }
-
-    private void run( EditorTab tab ) {
-
-        File objFile = new File(
-            String.format(
-                "%s/%s.obj",
-                tab.fileInfoRef.get().parentDirPath,
-                tab.fileInfoRef.get().fileNameWithoutExt
-            )
-        );
-
-        // Clear console before each run
+        // 2. Clear console
         tab.consoleTextPane.setText( "" );
 
-        // Set up piped streams for System.in
+        // 3. Delete stale build artefacts so a failed build can never run old code
+        for ( String ext : new String[]{ "asm", "obj", "dis" } ) {
+            new File( String.format( "%s/%s.%s", fi.parentDirPath, fi.fileNameWithoutExt, ext ) ).delete();
+        }
+
+        // 4. Save original streams
+        PrintStream origOut = System.out;
+        PrintStream origErr = System.err;
+        InputStream  origIn  = System.in;
+
+        // 5. Redirect stdout / stderr to the internal console
+        System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDOUT_COLOR ), true ) );
+        System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDERR_COLOR ), true ) );
+
+        // 6. Compile
+        compile( tab );
+
+        // 7. Assemble — only if the compiler produced an .asm file
+        File asmFile = new File( String.format( "%s/%s.asm", fi.parentDirPath, fi.fileNameWithoutExt ) );
+        if ( asmFile.exists() ) {
+            assemble( tab );
+        } else {
+            appendToConsole( tab.consoleTextPane,
+                "\n[Build stopped: no assembly file produced — fix the compilation errors above.]\n",
+                CONSOLE_STDERR_COLOR );
+        }
+
+        // ---- Compile-only path: restore and return ----
+        if ( !runCvm && !showDisassembly ) {
+            System.setOut( origOut );
+            System.setErr( origErr );
+            return;
+        }
+
+        // ---- Disassembly path: synchronous, then restore and return ----
+        if ( showDisassembly ) {
+            File objFile = new File( String.format( "%s/%s.obj", fi.parentDirPath, fi.fileNameWithoutExt ) );
+            if ( objFile.exists() ) {
+                disassemble( tab );
+            } else {
+                appendToConsole( tab.consoleTextPane,
+                    "\n[Disassembly stopped: no object file produced — fix the build errors above.]\n",
+                    CONSOLE_STDERR_COLOR );
+            }
+            System.setOut( origOut );
+            System.setErr( origErr );
+            return;
+        }
+
+        // ---- Run-CVM path: check .obj exists, then run in background ----
+        File objFile = new File( String.format( "%s/%s.obj", fi.parentDirPath, fi.fileNameWithoutExt ) );
+        if ( !objFile.exists() ) {
+            appendToConsole( tab.consoleTextPane,
+                "\n[Execution stopped: no object file produced — fix the build errors above.]\n",
+                CONSOLE_STDERR_COLOR );
+            System.setOut( origOut );
+            System.setErr( origErr );
+            return;
+        }
+
+        // Set up stdin pipe for interactive CVM input
         PipedOutputStream pipedOut = new PipedOutputStream();
-        PipedInputStream pipedIn;
+        PipedInputStream  pipedIn;
         try {
             pipedIn = new PipedInputStream( pipedOut );
         } catch ( IOException e ) {
+            System.setOut( origOut );
+            System.setErr( origErr );
             showErrorMessage( e );
             return;
         }
         tab.activePipedOut.set( pipedOut );
-
-        // Save original streams
-        PrintStream originalOut = System.out;
-        PrintStream originalErr = System.err;
-        InputStream originalIn = System.in;
-
-        // Redirect to internal console
-        System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDOUT_COLOR ), true ) );
-        System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDERR_COLOR ), true ) );
         System.setIn( pipedIn );
 
-        // Enable input controls and lock toolbar
         tab.consoleInputField.setEnabled( true );
         tab.consoleEnterButton.setEnabled( true );
         tab.consoleInputField.requestFocusInWindow();
@@ -635,7 +654,7 @@ public class MainWindow extends javax.swing.JFrame {
             protected Void doInBackground() throws Exception {
                 FileInputStream o = new FileInputStream( objFile );
                 Instruction.resetMaps();
-                CVM vm = new CVM( 8192 ); // 8KB of memory
+                CVM vm = new CVM( 8192 );
                 vm.loadProgram( o );
                 vm.run();
                 return null;
@@ -644,21 +663,17 @@ public class MainWindow extends javax.swing.JFrame {
             @Override
             protected void done() {
 
-                // Restore original streams
-                System.setOut( originalOut );
-                System.setErr( originalErr );
-                System.setIn( originalIn );
+                System.setOut( origOut );
+                System.setErr( origErr );
+                System.setIn( origIn );
 
-                // Clean up pipe
                 tab.activePipedOut.set( null );
                 try { pipedOut.close(); } catch ( IOException e ) { /* ignore */ }
 
-                // Disable input controls and unlock toolbar
                 tab.consoleInputField.setEnabled( false );
                 tab.consoleEnterButton.setEnabled( false );
                 setRunningState( false );
 
-                // Show runtime exceptions in the console
                 try {
                     get();
                 } catch ( Exception e ) {
@@ -697,15 +712,6 @@ public class MainWindow extends javax.swing.JFrame {
                     editorTab.fileInfoRef.get().fileNameWithoutExt
                 )
             );
-
-            if ( !objFile.exists() ) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "You need to compile the CPRL file first.",
-                    "ERROR",
-                    JOptionPane.ERROR_MESSAGE
-                );
-            }
 
             Disassembler.disassemble( objFile, disFile );
             DisassemblyWindow dw = new DisassemblyWindow(
