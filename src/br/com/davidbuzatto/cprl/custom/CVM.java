@@ -1,4 +1,4 @@
-package br.com.davidbuzatto.cprl.cvm;
+package br.com.davidbuzatto.cprl.custom;
 
 import edu.citadel.compiler.util.ByteUtil;
 import edu.citadel.compiler.util.StringUtil;
@@ -15,7 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 /**
- * Adapted from edu.citadel.cvm.CVM.
+ * Adapted from edu.citadel.cvm.CVM
+ * Needed to solve Windows handler issues.
  * 
  * This class implements a virtual machine for the programming language CPRL. It
  * interprets instructions for a hypothetical CPRL computer.

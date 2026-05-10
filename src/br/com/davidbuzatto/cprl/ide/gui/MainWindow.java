@@ -1,9 +1,9 @@
 package br.com.davidbuzatto.cprl.ide.gui;
 
-import br.com.davidbuzatto.cprl.cvm.Disassembler;
-import br.com.davidbuzatto.cprl.cvm.Assembler;
-import br.com.davidbuzatto.cprl.cvm.CVM;
-import br.com.davidbuzatto.cprl.cvm.Compiler;
+import br.com.davidbuzatto.cprl.custom.Disassembler;
+import br.com.davidbuzatto.cprl.custom.Assembler;
+import br.com.davidbuzatto.cprl.custom.CVM;
+import br.com.davidbuzatto.cprl.custom.Compiler;
 import com.formdev.flatlaf.FlatDarkLaf;
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;

@@ -1,9 +1,4 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package br.com.davidbuzatto.cprl.cvm;
+package br.com.davidbuzatto.cprl.custom;
 
 import edu.citadel.compiler.CodeGenException;
 import edu.citadel.compiler.ErrorHandler;
@@ -20,7 +15,8 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Adapted from edu.citadel.compiler.Compiler;
+ * Adapted from edu.citadel.compiler.Compiler.
+ * Needed to solve Windows handler issues.
  * 
  * Compiler for the CPRL programming language.
  */

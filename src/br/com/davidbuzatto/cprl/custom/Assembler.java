@@ -1,4 +1,4 @@
-package br.com.davidbuzatto.cprl.cvm;
+package br.com.davidbuzatto.cprl.custom;
 
 import edu.citadel.compiler.ErrorHandler;
 import edu.citadel.compiler.Source;
@@ -16,7 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Adapted from edu.citadel.cvm.assembler.Assembler;
+ * Adapted from edu.citadel.cvm.assembler.Assembler
+ * Needed to solve Windows handler issues.
  * 
  * Assembler for the CPRL Virtual Machine.
  */

@@ -1,4 +1,4 @@
-package br.com.davidbuzatto.cprl.cvm;
+package br.com.davidbuzatto.cprl.custom;
 
 import edu.citadel.compiler.util.ByteUtil;
 import edu.citadel.compiler.util.StringUtil;
@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Adapted from edu.citadel.cvm.Disassembler.
+ * Needed to solve Windows handler issues.
  *
  * Translates CVM machine code into CVM assembly language.
  */
