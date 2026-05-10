@@ -1,11 +1,11 @@
-// testes
+// Optimizations
 
 var x : Integer;
 const a := 10;
 
 begin
-    x := 10 * a;
-    x := x + 1;
+    x := 10 * a; // constant folding
+    x := x + 1;  // strength reduction
     writeln "Hello, World!";
     writeln "x = ", x;
 end.

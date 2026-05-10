@@ -218,8 +218,9 @@ public class MainWindow extends javax.swing.JFrame {
         untitledCounter = 0;
 
         try {
-            //openFile( new File( "cprl-sources/Hanoi.cprl" ) );
-            openFile( new File( "cprl-sources/MultiplationTable.cprl" ) );
+            openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
+            openFile( new File( "cprl-examples/Optimizations.cprl" ) );
+            openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }

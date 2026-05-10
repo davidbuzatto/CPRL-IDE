@@ -4,8 +4,12 @@ import edu.citadel.compiler.util.ByteUtil;
 import edu.citadel.compiler.util.StringUtil;
 import edu.citadel.cvm.Constants;
 import edu.citadel.cvm.OpCode;
-
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
 /**

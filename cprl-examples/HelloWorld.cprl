@@ -1,0 +1,5 @@
+// Hello, World!
+
+begin
+    writeln "Hello, World!";
+end.

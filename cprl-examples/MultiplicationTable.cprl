@@ -1,4 +1,4 @@
-// multiplication table program
+// Multiplication Table
 
 var n : Integer;
 var i : Integer;

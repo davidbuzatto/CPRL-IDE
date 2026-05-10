@@ -1,1 +1,2 @@
-Use the "console".
+Solve bug (save before);
+Keyboard shortcuts.
