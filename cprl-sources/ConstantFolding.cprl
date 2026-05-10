@@ -1,9 +1,11 @@
 // testes
 
 var x : Integer;
+const a := 10;
 
 begin
-    x := 10;
+    x := 10 * a;
+    x := x + 1;
     writeln "Hello, World!";
     writeln "x = ", x;
 end.

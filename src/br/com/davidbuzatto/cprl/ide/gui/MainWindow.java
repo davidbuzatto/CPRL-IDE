@@ -1,5 +1,6 @@
 package br.com.davidbuzatto.cprl.ide.gui;
 
+import br.com.davidbuzatto.cprl.Disassembler;
 import com.formdev.flatlaf.FlatDarkLaf;
 import edu.citadel.compiler.Compiler;
 import edu.citadel.cvm.CVM;
@@ -66,7 +67,7 @@ public class MainWindow extends javax.swing.JFrame {
         JLabel titleLabel
     ) {};
 
-    private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
+    public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
     private Map<JComponent, EditorTab> editorTabs;
@@ -89,15 +90,13 @@ public class MainWindow extends javax.swing.JFrame {
         skipInitialTabChange = true;
         untitledCounter = 0;
 
-        try {
-            openFile( new File( "cprl-sources/Correct_101.cprl" ) );
-            openFile( new File( "cprl-sources/Correct_102.cprl" ) );
-            openFile( new File( "cprl-sources/Correct_103.cprl" ) );
+        /*try {
             openFile( new File( "cprl-sources/Hanoi.cprl" ) );
-            openFile( new File( "cprl-sources/test.cprl" ) );
+            openFile( new File( "cprl-sources/Test.cprl" ) );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
-        }
+        }*/
+        
     }
 
     @SuppressWarnings( "unchecked" )
@@ -111,12 +110,14 @@ public class MainWindow extends javax.swing.JFrame {
         btnSaveAs = new javax.swing.JButton();
         btnSaveAll = new javax.swing.JButton();
         sep01 = new javax.swing.JToolBar.Separator();
+        btnCompile = new javax.swing.JButton();
         btnCompileAndRun = new javax.swing.JButton();
         sep02 = new javax.swing.JToolBar.Separator();
         btnDisassembly = new javax.swing.JButton();
         tabbedPaneSourceCode = new javax.swing.JTabbedPane();
         menuBar = new javax.swing.JMenuBar();
         menuHelp = new javax.swing.JMenu();
+        menuItemAbout = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("CPRL IDE");
@@ -172,6 +173,14 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnSaveAll);
         toolbar.add(sep01);
 
+        btnCompile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/cog.png"))); // NOI18N
+        btnCompile.setToolTipText("Compile");
+        btnCompile.setFocusable(false);
+        btnCompile.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnCompile.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnCompile.addActionListener(this::btnCompileActionPerformed);
+        toolbar.add(btnCompile);
+
         btnCompileAndRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"))); // NOI18N
         btnCompileAndRun.setToolTipText("Compile and Run");
         btnCompileAndRun.setFocusable(false);
@@ -186,11 +195,18 @@ public class MainWindow extends javax.swing.JFrame {
         btnDisassembly.setFocusable(false);
         btnDisassembly.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnDisassembly.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnDisassembly.addActionListener(this::btnDisassemblyActionPerformed);
         toolbar.add(btnDisassembly);
 
         tabbedPaneSourceCode.addChangeListener(this::tabbedPaneSourceCodeStateChanged);
 
         menuHelp.setText("Help");
+
+        menuItemAbout.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/help.png"))); // NOI18N
+        menuItemAbout.setText("About...");
+        menuItemAbout.addActionListener(this::menuItemAboutActionPerformed);
+        menuHelp.add(menuItemAbout);
+
         menuBar.add(menuHelp);
 
         setJMenuBar(menuBar);
@@ -328,6 +344,42 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_btnSaveAsActionPerformed
 
+    private void btnDisassemblyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDisassemblyActionPerformed
+        
+        if ( activeTab == null ) {
+            return;
+        }
+        
+        if ( !saveFile( activeTab ) ) {
+            return;
+        }
+        
+        SourceFileInfo fi = activeTab.fileInfoRef.get();
+        if ( fi == null ) {
+            return;
+        }
+        
+        compileAndAssemble();
+        disassemble( activeTab );
+        
+    }//GEN-LAST:event_btnDisassemblyActionPerformed
+
+    private void btnCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileActionPerformed
+        compileAndAssemble();
+    }//GEN-LAST:event_btnCompileActionPerformed
+
+    private void menuItemAboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemAboutActionPerformed
+        JOptionPane.showMessageDialog( 
+            this, 
+            """
+            This is the CPRL IDE, a simple tool do develop programs using CPRL.
+            
+            Developed by Prof. Dr. David Buzatto""", 
+            "About...",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }//GEN-LAST:event_menuItemAboutActionPerformed
+
     // -------------------------------------------------------------------------
     // File management
     // -------------------------------------------------------------------------
@@ -459,6 +511,26 @@ public class MainWindow extends javax.swing.JFrame {
             showErrorMessage( exc );
         }
     }
+    
+    private void compileAndAssemble() {
+        
+        if ( activeTab == null ) {
+            return;
+        }
+        
+        if ( !saveFile( activeTab ) ) {
+            return;
+        }
+        
+        SourceFileInfo fi = activeTab.fileInfoRef.get();
+        if ( fi == null ) {
+            return;
+        }
+        
+        compile( activeTab );
+        assemble( activeTab );
+        
+    }
 
     private void run( EditorTab editorTab ) {
         try {
@@ -474,6 +546,49 @@ public class MainWindow extends javax.swing.JFrame {
             CVM vm = new CVM( 8192 ); // 8KB of memory
             vm.loadProgram( o );
             vm.run();
+        } catch ( IOException exc ) {
+            showErrorMessage( exc );
+        }
+    }
+    
+    private void disassemble( EditorTab editorTab ) {
+        
+        try {
+            
+            File objFile = new File(
+                String.format(
+                    "%s/%s.obj",
+                    editorTab.fileInfoRef.get().parentDirPath,
+                    editorTab.fileInfoRef.get().fileNameWithoutExt
+                )
+            );
+            
+            File disFile = new File(
+                String.format(
+                    "%s/%s.dis",
+                    editorTab.fileInfoRef.get().parentDirPath,
+                    editorTab.fileInfoRef.get().fileNameWithoutExt
+                )
+            );
+            
+            if ( !objFile.exists() ) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "You need to compile the CPRL file first.",
+                    "ERROR",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+            
+            Disassembler.disassemble( objFile, disFile );
+            DisassemblyWindow dw = new DisassemblyWindow(
+                String.format( "Disassembled code from %s to %s", objFile.getName(), disFile.getName() )
+            );
+            loadSourceCode( disFile, dw.getAssemblySourceCode() );
+            
+            SwingUtilities.invokeLater( () -> dw.setVisible( true ) );
+            SwingUtilities.invokeLater( () -> dw.getAssemblySourceCode().setCaretPosition( 0 ) );
+            
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
@@ -682,7 +797,7 @@ public class MainWindow extends javax.swing.JFrame {
         return new SourceFileInfo( file, parentDirPath, fileNameWithoutExt );
     }
 
-    private void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
+    public static void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
 
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
 
@@ -724,6 +839,7 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnCompile;
     private javax.swing.JButton btnCompileAndRun;
     private javax.swing.JButton btnDisassembly;
     private javax.swing.JButton btnNew;
@@ -733,6 +849,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JButton btnSaveAs;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenu menuHelp;
+    private javax.swing.JMenuItem menuItemAbout;
     private javax.swing.JToolBar.Separator sep01;
     private javax.swing.JToolBar.Separator sep02;
     private javax.swing.JTabbedPane tabbedPaneSourceCode;
