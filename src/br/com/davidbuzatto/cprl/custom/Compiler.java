@@ -44,44 +44,52 @@ public class Compiler {
      */
     public boolean compile() throws IOException {
         
-        FileReader reader = new FileReader( sourceFile, StandardCharsets.UTF_8 );
-        Source source = new Source( reader );
-        Scanner scanner = new Scanner( source );
-        Parser parser = new Parser( scanner );
-
         ErrorHandler errorHandler = ErrorHandler.getInstance();
+        errorHandler.resetErrorCount();
+        
+        try ( FileReader reader = new FileReader( sourceFile, StandardCharsets.UTF_8 ) ) {
+            
+            Source source = new Source( reader );
+            Scanner scanner = new Scanner( source );
+            Parser parser = new Parser( scanner );
 
-        printProgressMessage( "Starting compilation for " + sourceFile.getName() + "..." );
+            printProgressMessage( "Starting compilation for " + sourceFile.getName() + "..." );
 
-        // parse source file
-        Program program = parser.parseProgram();
+            // parse source file
+            Program program = parser.parseProgram();
 
-        // check constraints
-        if ( !errorHandler.errorsExist() ) {
-            printProgressMessage( "Checking constraints..." );
-            program.checkConstraints();
-        }
-
-        // generate code
-        if ( !errorHandler.errorsExist() ) {
-            printProgressMessage( "Generating code..." );
-
-            // no error recovery from errors detected during code generation
-            try {
-                AST.setPrintWriter( getTargetPrintWriter( sourceFile ) );
-                program.emit();
-            } catch ( CodeGenException ex ) {
-                errorHandler.reportError( ex );
+            // check constraints
+            if ( !errorHandler.errorsExist() ) {
+                printProgressMessage( "Checking constraints..." );
+                program.checkConstraints();
             }
-        }
 
-        if ( errorHandler.errorsExist() ) {
-            errorHandler.printMessage( "Errors detected in " + sourceFile.getName()
-                + " -- compilation terminated." );
+            // generate code
+            if ( !errorHandler.errorsExist() ) {
+                printProgressMessage( "Generating code..." );
+
+                // no error recovery from errors detected during code generation
+                try {
+                    AST.setPrintWriter( getTargetPrintWriter( sourceFile ) );
+                    program.emit();
+                } catch ( CodeGenException ex ) {
+                    errorHandler.reportError( ex );
+                }
+            }
+
+            if ( errorHandler.errorsExist() ) {
+                errorHandler.printMessage( "Errors detected in " + sourceFile.getName()
+                    + " -- compilation terminated." );
+                return false;
+            } else {
+                printProgressMessage( "Compilation complete." );
+                return true;
+            }
+            
+        } catch ( IOException exc ) {
+            errorHandler.printMessage( "Errors detected " + exc.getMessage()
+                    + " -- compilation terminated." );
             return false;
-        } else {
-            printProgressMessage( "Compilation complete." );
-            return true;
         }
     }
 

@@ -5,9 +5,6 @@ import br.com.davidbuzatto.cprl.custom.CVM;
 import br.com.davidbuzatto.cprl.custom.Assembler;
 import br.com.davidbuzatto.cprl.custom.Disassembler;
 import com.formdev.flatlaf.FlatDarkLaf;
-/*import edu.citadel.compiler.Compiler;
-import edu.citadel.cvm.CVM;
-import edu.citadel.cvm.assembler.Assembler;*/
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -195,7 +192,7 @@ public class MainWindow extends javax.swing.JFrame {
     // -------------------------------------------------------------------------
 
     private static final boolean LOAD_TEST_FILES = true;
-    private static final boolean DEBUG_ARTEFACTS_DELETION = true;
+    private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
     public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
@@ -811,6 +808,7 @@ public class MainWindow extends javax.swing.JFrame {
         // 7. Assemble - only if the compiler produced an .asm file.
         File asmFile = new File( String.format( "%s/%s.asm", fi.parentDirPath, fi.fileNameWithoutExt ) );
         if ( asmFile.exists() ) {
+            Instruction.resetMaps();
             if ( !assemble( tab ) ) {
                 System.err.println( "Assembly error - stopping pipeline!" );
                 System.setOut( origOut );

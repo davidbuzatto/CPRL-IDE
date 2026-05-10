@@ -93,67 +93,75 @@ public class Assembler {
      * writing to the target file.
      */
     public boolean assemble() throws IOException {
-        FileReader reader = new FileReader( sourceFile, StandardCharsets.UTF_8 );
-        Source source = new Source( reader );
-        Scanner scanner = new Scanner( source );
-        Parser parser = new Parser( scanner );
-
+        
         ErrorHandler errorHandler = ErrorHandler.getInstance();
+        errorHandler.resetErrorCount();
+            
+        try ( FileReader reader = new FileReader( sourceFile, StandardCharsets.UTF_8 ) ) {
+            
+            Source source = new Source( reader );
+            Scanner scanner = new Scanner( source );
+            Parser parser = new Parser( scanner );
 
-        printProgressMessage( "Starting assembly for " + sourceFile.getName() + "..." );
+            printProgressMessage( "Starting assembly for " + sourceFile.getName() + "..." );
 
-        // parse source file
-        Program prog = parser.parseProgram();
+            // parse source file
+            Program prog = parser.parseProgram();
 
-        if ( DEBUG ) {
-            System.out.println( "Program after parsing" );
-            printInstructions( prog.getInstructions() );
-        }
+            if ( DEBUG ) {
+                System.out.println( "Program after parsing" );
+                printInstructions( prog.getInstructions() );
+            }
 
-        // optimize
-        if ( !errorHandler.errorsExist() && OPTIMIZE ) {
-            printProgressMessage( "Performing optimizations..." );
-            prog.optimize();
-        }
+            // optimize
+            if ( !errorHandler.errorsExist() && OPTIMIZE ) {
+                printProgressMessage( "Performing optimizations..." );
+                prog.optimize();
+            }
 
-        if ( DEBUG ) {
-            System.out.println( "Program after performing optimizations" );
-            printInstructions( prog.getInstructions() );
-        }
+            if ( DEBUG ) {
+                System.out.println( "Program after performing optimizations" );
+                printInstructions( prog.getInstructions() );
+            }
 
-        // set addresses
-        if ( !errorHandler.errorsExist() ) {
-            printProgressMessage( "Setting memory addresses..." );
-            prog.setAddresses();
-        }
+            // set addresses
+            if ( !errorHandler.errorsExist() ) {
+                printProgressMessage( "Setting memory addresses..." );
+                prog.setAddresses();
+            }
 
-        // check constraints
-        if ( !errorHandler.errorsExist() ) {
-            printProgressMessage( "Checking constraints..." );
-            prog.checkConstraints();
-        }
+            // check constraints
+            if ( !errorHandler.errorsExist() ) {
+                printProgressMessage( "Checking constraints..." );
+                prog.checkConstraints();
+            }
 
-        if ( DEBUG ) {
-            System.out.println( "Program after checking constraints" );
-            printInstructions( prog.getInstructions() );
-        }
+            if ( DEBUG ) {
+                System.out.println( "Program after checking constraints" );
+                printInstructions( prog.getInstructions() );
+            }
 
-        // generate code
-        if ( !errorHandler.errorsExist() ) {
-            printProgressMessage( "Generating code..." );
-            AST.setOutputStream( getTargetOutputStream( sourceFile ) );
+            // generate code
+            if ( !errorHandler.errorsExist() ) {
+                printProgressMessage( "Generating code..." );
+                AST.setOutputStream( getTargetOutputStream( sourceFile ) );
 
-            // no error recovery from errors detected during code generation
-            prog.emit();
-        }
+                // no error recovery from errors detected during code generation
+                prog.emit();
+            }
 
-        if ( errorHandler.errorsExist() ) {
-            errorHandler.printMessage( "Errors detected in " + sourceFile.getName()
-                + " -- assembly terminated. ***" );
+            if ( errorHandler.errorsExist() ) {
+                errorHandler.printMessage( "Errors detected in " + sourceFile.getName()
+                    + " -- assembly terminated. ***" );
+                return false;
+            } else {
+                printProgressMessage( "Assembly complete." );
+                return true;
+            }
+        } catch ( IOException exc ) {
+            errorHandler.printMessage( "Errors detected " + exc.getMessage()
+                    + " -- compilation terminated." );
             return false;
-        } else {
-            printProgressMessage( "Assembly complete." );
-            return true;
         }
     }
 
