@@ -4,6 +4,7 @@ import br.com.davidbuzatto.cprl.custom.Compiler;
 import br.com.davidbuzatto.cprl.custom.CVM;
 import br.com.davidbuzatto.cprl.custom.Assembler;
 import br.com.davidbuzatto.cprl.custom.Disassembler;
+import br.com.davidbuzatto.cprl.ide.utils.Utils;
 import com.formdev.flatlaf.FlatDarkLaf;
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
@@ -194,7 +195,7 @@ public class MainWindow extends javax.swing.JFrame {
     private static final boolean LOAD_TEST_FILES = false;
     private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
-    private static final String VERSION = "v1.0.1";
+    public static final String VERSION = "v1.0.1";
     public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
@@ -1469,7 +1470,11 @@ public class MainWindow extends javax.swing.JFrame {
      */
     public static void main( String args[] ) {
         FlatDarkLaf.setup();
-        SwingUtilities.invokeLater( () -> new MainWindow().setVisible( true ) );
+        SwingUtilities.invokeLater( () -> { 
+            MainWindow mainWindow = new MainWindow();
+            Utils.updateSplashScreen( 6000 );
+            mainWindow.setVisible( true );
+        });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
