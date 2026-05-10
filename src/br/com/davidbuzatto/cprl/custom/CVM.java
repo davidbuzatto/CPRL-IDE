@@ -153,7 +153,6 @@ public class CVM {
      * @param numOfBytes the number of bytes in memory of the virtual machine
      */
     public CVM( int numOfBytes ) {
-        
         scanner = new Scanner( System.in );
         reader = new InputStreamReader( System.in, StandardCharsets.UTF_8 );
         out = new PrintStream( System.out, true, StandardCharsets.UTF_8 );
@@ -171,7 +170,6 @@ public class CVM {
         sb = 0;
 
         running = false;
-        
     }
 
     /**
@@ -191,14 +189,9 @@ public class CVM {
             bp = address;
             sb = address;
             sp = bp - 1;
+            codeFile.close();
         } catch ( IOException e ) {
             error( e.toString() );
-        } finally {
-            try {
-                codeFile.close();
-            } catch ( IOException e ) {
-                // ignore — stream already closed or never opened
-            }
         }
     }
 
@@ -544,15 +537,11 @@ public class CVM {
     // Start: internal machine instructions that do NOT correspond to OpCodes
     //------------------------------------------------------------------------
     /**
-     * Print an error message and throw a {@link RuntimeException} so that the
-     * caller (e.g., a SwingWorker) can handle the failure without terminating
-     * the entire JVM.
-     *
-     * @param message the error description to report
-     * @throws RuntimeException always, carrying the supplied message
+     * Print an error message and exit with nonzero status code.
      */
     private static void error( String message ) {
-        throw new RuntimeException( message );
+        System.err.println( message );
+        System.exit( 1 );
     }
 
     /**
