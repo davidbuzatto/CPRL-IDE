@@ -23,9 +23,13 @@ CPRL is a small, Pascal-like programming language designed for educational purpo
 
 | Shortcut | Action |
 |---|---|
+| `Ctrl+N` | Create new file |
+| `Ctrl+O` | Open files |
 | `Ctrl+S` | Save the active file |
 | `Ctrl+Shift+S` | Save all open files |
+| `Shift+F5` | Compile the active file |
 | `Shift+F6` | Compile and run the active file |
+| `Shift+F7` | Disassembly the active file |
 
 ---
 
