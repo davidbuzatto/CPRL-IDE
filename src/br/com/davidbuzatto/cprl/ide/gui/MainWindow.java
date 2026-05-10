@@ -191,6 +191,9 @@ public class MainWindow extends javax.swing.JFrame {
     // Fields
     // -------------------------------------------------------------------------
 
+    private static final boolean LOAD_TEST_FILES = true;
+    private static final boolean DEBUG_ARTEFACTS_DELETION = true;
+    
     public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
@@ -206,9 +209,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     /**
      * Creates the IDE main window, registers the CPRL token maker, and
-     * initialises all internal state.  A test file is opened automatically
-     * so the window is never empty on startup (the path can be changed or
-     * commented out for production use).
+     * initialises all internal state.
      */
     public MainWindow() {
 
@@ -225,13 +226,15 @@ public class MainWindow extends javax.swing.JFrame {
         skipInitialTabChange = true;
         untitledCounter = 0;
         
-        /*try {
-            openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
-            openFile( new File( "cprl-examples/Optimizations.cprl" ) );
-            openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
-        } catch ( IOException exc ) {
-            showErrorMessage( exc );
-        }*/
+        if ( LOAD_TEST_FILES ) {
+            try {
+                openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
+                openFile( new File( "cprl-examples/Optimizations.cprl" ) );
+                openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
+            } catch ( IOException exc ) {
+                showErrorMessage( exc );
+            }
+        }
 
     }
 
@@ -759,10 +762,20 @@ public class MainWindow extends javax.swing.JFrame {
 
         // 3. Delete stale build artefacts so a failed build can never run old code.
         for ( String ext : new String[]{ "asm", "obj", "dis" } ) {
+            
             File fileToDelete = new File( String.format( "%s/%s.%s", fi.parentDirPath, fi.fileNameWithoutExt, ext ) );
+            
             if ( fileToDelete.exists() ) {
-                fileToDelete.delete();
+                boolean deleted = fileToDelete.delete();
+                if ( DEBUG_ARTEFACTS_DELETION ) {
+                    System.out.println( fileToDelete + " was deleted? " + deleted );
+                }
+            } else {
+                if ( DEBUG_ARTEFACTS_DELETION ) {
+                    System.out.println( fileToDelete + ": does not exist" );
+                }
             }
+            
         }
 
         // 4. Save original streams so they can be restored after the pipeline.
