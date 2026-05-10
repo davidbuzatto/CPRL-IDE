@@ -1,10 +1,10 @@
 package br.com.davidbuzatto.cprl.ide.gui;
 
 import br.com.davidbuzatto.cprl.custom.Disassembler;
-import br.com.davidbuzatto.cprl.custom.Assembler;
-import br.com.davidbuzatto.cprl.custom.CVM;
-import br.com.davidbuzatto.cprl.custom.Compiler;
 import com.formdev.flatlaf.FlatDarkLaf;
+import edu.citadel.compiler.Compiler;
+import edu.citadel.cvm.CVM;
+import edu.citadel.cvm.assembler.Assembler;
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -206,7 +207,7 @@ public class MainWindow extends javax.swing.JFrame {
     public MainWindow() {
 
         initComponents();
-        setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
+        setIconImage( new ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png") ).getImage() );
 
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
         ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
@@ -247,7 +248,7 @@ public class MainWindow extends javax.swing.JFrame {
         menuHelp = new javax.swing.JMenu();
         menuItemAbout = new javax.swing.JMenuItem();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("CPRL IDE");
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {

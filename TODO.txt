@@ -1,2 +1,2 @@
-Solve bug (save before);
 Keyboard shortcuts.
+There are some bugs related to Windows file handlers.

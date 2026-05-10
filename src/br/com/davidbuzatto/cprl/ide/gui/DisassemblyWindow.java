@@ -2,8 +2,7 @@ package br.com.davidbuzatto.cprl.ide.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import javax.swing.JButton;
-import javax.swing.SwingUtilities;
+import javax.swing.ImageIcon;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
@@ -20,6 +19,7 @@ public class DisassemblyWindow extends javax.swing.JFrame {
         
         initComponents();
         setTitle( title );
+        setIconImage( new ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png") ).getImage() );
         
         assemblySourceCode = new RSyntaxTextArea();
         assemblySourceCode.setCodeFoldingEnabled( false );
