@@ -15,6 +15,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,11 +36,17 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 import org.fife.ui.rsyntaxtextarea.AbstractTokenMakerFactory;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxScheme;
@@ -49,6 +60,44 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  * @author Prof. Dr. David Buzatto
  */
 public class MainWindow extends javax.swing.JFrame {
+
+    // -------------------------------------------------------------------------
+    // Colors used in the internal console
+    // -------------------------------------------------------------------------
+    private static final Color CONSOLE_STDOUT_COLOR = new Color( 0xE8EFF1, false );
+    private static final Color CONSOLE_STDERR_COLOR = new Color( 0xFF6060, false );
+    private static final Color CONSOLE_ECHO_COLOR   = new Color( 0xA0D0FF, false );
+    private static final Color CONSOLE_BG_COLOR     = new Color( 0x1E1E1E, false );
+
+    // -------------------------------------------------------------------------
+    // Custom OutputStream that appends styled text to a JTextPane
+    // -------------------------------------------------------------------------
+    private static class ConsoleOutputStream extends OutputStream {
+
+        private final JTextPane textPane;
+        private final Color color;
+
+        ConsoleOutputStream( JTextPane textPane, Color color ) {
+            this.textPane = textPane;
+            this.color = color;
+        }
+
+        @Override
+        public void write( int b ) throws IOException {
+            write( new byte[]{ (byte) b }, 0, 1 );
+        }
+
+        @Override
+        public void write( byte[] b, int off, int len ) throws IOException {
+            String text = new String( b, off, len );
+            SwingUtilities.invokeLater( () -> appendToConsole( textPane, text, color ) );
+        }
+
+    }
+
+    // -------------------------------------------------------------------------
+    // Records
+    // -------------------------------------------------------------------------
 
     private static record SourceFileInfo(
         File file,
@@ -64,8 +113,15 @@ public class MainWindow extends javax.swing.JFrame {
         JSplitPane verticalSplit,
         AtomicReference<SourceFileInfo> fileInfoRef,
         AtomicBoolean isDirty,
-        JLabel titleLabel
+        JLabel titleLabel,
+        JTextField consoleInputField,
+        JButton consoleEnterButton,
+        AtomicReference<PipedOutputStream> activePipedOut
     ) {};
+
+    // -------------------------------------------------------------------------
+    // Fields
+    // -------------------------------------------------------------------------
 
     public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
@@ -75,6 +131,10 @@ public class MainWindow extends javax.swing.JFrame {
     private Set<String> openedFilePaths;
     private boolean skipInitialTabChange;
     private int untitledCounter;
+
+    // -------------------------------------------------------------------------
+    // Constructor
+    // -------------------------------------------------------------------------
 
     public MainWindow() {
 
@@ -96,7 +156,7 @@ public class MainWindow extends javax.swing.JFrame {
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }*/
-        
+
     }
 
     @SuppressWarnings( "unchecked" )
@@ -231,24 +291,24 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileAndRunActionPerformed
-        
+
         if ( activeTab == null ) {
             return;
         }
-        
+
         if ( !saveFile( activeTab ) ) {
             return;
         }
-        
+
         SourceFileInfo fi = activeTab.fileInfoRef.get();
         if ( fi == null ) {
             return;
         }
-        
+
         compile( activeTab );
         assemble( activeTab );
         run( activeTab );
-        
+
     }//GEN-LAST:event_btnCompileAndRunActionPerformed
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
@@ -300,16 +360,16 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_formComponentResized
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        
+
         for ( int i = tabbedPaneSourceCode.getTabCount() - 1; i >= 0; i-- ) {
-            
+
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
             EditorTab tab = editorTabs.get( c );
-            
+
             if ( tab != null && tab.isDirty.get() ) {
-                
+
                 tabbedPaneSourceCode.setSelectedIndex( i );
-                
+
                 int choice = JOptionPane.showConfirmDialog(
                     this,
                     "File \"" + tabTitle( tab ) + "\" has unsaved changes. Save before closing?",
@@ -317,19 +377,19 @@ public class MainWindow extends javax.swing.JFrame {
                     JOptionPane.YES_NO_CANCEL_OPTION,
                     JOptionPane.WARNING_MESSAGE
                 );
-                
+
                 if ( choice == JOptionPane.YES_OPTION ) {
                     if ( !saveFile( tab ) ) return;
                 } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
                     return;
                 }
-                
+
             }
-            
+
         }
-        
+
         System.exit( 0 );
-        
+
     }//GEN-LAST:event_formWindowClosing
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
@@ -345,23 +405,23 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_btnSaveAsActionPerformed
 
     private void btnDisassemblyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDisassemblyActionPerformed
-        
+
         if ( activeTab == null ) {
             return;
         }
-        
+
         if ( !saveFile( activeTab ) ) {
             return;
         }
-        
+
         SourceFileInfo fi = activeTab.fileInfoRef.get();
         if ( fi == null ) {
             return;
         }
-        
+
         compileAndAssemble();
         disassemble( activeTab );
-        
+
     }//GEN-LAST:event_btnDisassemblyActionPerformed
 
     private void btnCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCompileActionPerformed
@@ -369,12 +429,12 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_btnCompileActionPerformed
 
     private void menuItemAboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemAboutActionPerformed
-        JOptionPane.showMessageDialog( 
-            this, 
+        JOptionPane.showMessageDialog(
+            this,
             """
             This is the CPRL IDE, a simple tool do develop programs using CPRL.
-            
-            Developed by Prof. Dr. David Buzatto""", 
+
+            Developed by Prof. Dr. David Buzatto""",
             "About...",
             JOptionPane.INFORMATION_MESSAGE
         );
@@ -407,8 +467,8 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     /**
-     * Saves the active file. If the file has no path (new/untitled), opens a
-     * Save As dialog. Returns false if the user cancels the dialog.
+     * Saves the file. If new/untitled, opens a Save As dialog.
+     * Returns false if the user cancels.
      */
     private boolean saveFile( EditorTab tab ) {
         if ( tab.fileInfoRef.get() == null ) {
@@ -418,9 +478,7 @@ public class MainWindow extends javax.swing.JFrame {
         return true;
     }
 
-    /**
-     * Always opens a Save As dialog. Returns false if the user cancels.
-     */
+    /** Always opens a Save As dialog. Returns false if the user cancels. */
     private boolean saveFileAs( EditorTab tab ) {
 
         JFileChooser jfc = new JFileChooser( "./" );
@@ -436,7 +494,6 @@ public class MainWindow extends javax.swing.JFrame {
             file = new File( file.getAbsolutePath() + ".cprl" );
         }
 
-        // Remove old path from tracking (if any)
         SourceFileInfo oldInfo = tab.fileInfoRef.get();
         if ( oldInfo != null ) {
             openedFilePaths.remove( oldInfo.file.getAbsolutePath() );
@@ -481,10 +538,10 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void compile( EditorTab editorTab ) {
         try {
-            File sourceFile = new File( 
-                String.format( 
-                    "%s/%s.cprl", 
-                    editorTab.fileInfoRef.get().parentDirPath, 
+            File sourceFile = new File(
+                String.format(
+                    "%s/%s.cprl",
+                    editorTab.fileInfoRef.get().parentDirPath,
                     editorTab.fileInfoRef.get().fileNameWithoutExt
                 )
             );
@@ -497,8 +554,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void assemble( EditorTab editorTab ) {
         try {
-            File asmFile = new File( 
-                String.format( 
+            File asmFile = new File(
+                String.format(
                     "%s/%s.asm",
                     editorTab.fileInfoRef.get().parentDirPath,
                     editorTab.fileInfoRef.get().fileNameWithoutExt
@@ -511,50 +568,120 @@ public class MainWindow extends javax.swing.JFrame {
             showErrorMessage( exc );
         }
     }
-    
+
     private void compileAndAssemble() {
-        
+
         if ( activeTab == null ) {
             return;
         }
-        
+
         if ( !saveFile( activeTab ) ) {
             return;
         }
-        
+
         SourceFileInfo fi = activeTab.fileInfoRef.get();
         if ( fi == null ) {
             return;
         }
-        
+
         compile( activeTab );
         assemble( activeTab );
-        
+
     }
 
-    private void run( EditorTab editorTab ) {
+    private void run( EditorTab tab ) {
+
+        File objFile = new File(
+            String.format(
+                "%s/%s.obj",
+                tab.fileInfoRef.get().parentDirPath,
+                tab.fileInfoRef.get().fileNameWithoutExt
+            )
+        );
+
+        // Clear console before each run
+        tab.consoleTextPane.setText( "" );
+
+        // Set up piped streams for System.in
+        PipedOutputStream pipedOut = new PipedOutputStream();
+        PipedInputStream pipedIn;
         try {
-            File objFile = new File(
-                String.format(
-                    "%s/%s.obj",
-                    editorTab.fileInfoRef.get().parentDirPath,
-                    editorTab.fileInfoRef.get().fileNameWithoutExt
-                )
-            );
-            FileInputStream o = new FileInputStream( objFile );
-            Instruction.resetMaps();
-            CVM vm = new CVM( 8192 ); // 8KB of memory
-            vm.loadProgram( o );
-            vm.run();
-        } catch ( IOException exc ) {
-            showErrorMessage( exc );
+            pipedIn = new PipedInputStream( pipedOut );
+        } catch ( IOException e ) {
+            showErrorMessage( e );
+            return;
         }
+        tab.activePipedOut.set( pipedOut );
+
+        // Save original streams
+        PrintStream originalOut = System.out;
+        PrintStream originalErr = System.err;
+        InputStream originalIn = System.in;
+
+        // Redirect to internal console
+        System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDOUT_COLOR ), true ) );
+        System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDERR_COLOR ), true ) );
+        System.setIn( pipedIn );
+
+        // Enable input controls and lock toolbar
+        tab.consoleInputField.setEnabled( true );
+        tab.consoleEnterButton.setEnabled( true );
+        tab.consoleInputField.requestFocusInWindow();
+        setRunningState( true );
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+
+            @Override
+            protected Void doInBackground() throws Exception {
+                FileInputStream o = new FileInputStream( objFile );
+                Instruction.resetMaps();
+                CVM vm = new CVM( 8192 ); // 8KB of memory
+                vm.loadProgram( o );
+                vm.run();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+
+                // Restore original streams
+                System.setOut( originalOut );
+                System.setErr( originalErr );
+                System.setIn( originalIn );
+
+                // Clean up pipe
+                tab.activePipedOut.set( null );
+                try { pipedOut.close(); } catch ( IOException e ) { /* ignore */ }
+
+                // Disable input controls and unlock toolbar
+                tab.consoleInputField.setEnabled( false );
+                tab.consoleEnterButton.setEnabled( false );
+                setRunningState( false );
+
+                // Show runtime exceptions in the console
+                try {
+                    get();
+                } catch ( Exception e ) {
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    appendToConsole(
+                        tab.consoleTextPane,
+                        "\n[Runtime error: " + cause.getMessage() + "]\n",
+                        CONSOLE_STDERR_COLOR
+                    );
+                }
+
+            }
+
+        };
+
+        worker.execute();
+
     }
-    
+
     private void disassemble( EditorTab editorTab ) {
-        
+
         try {
-            
+
             File objFile = new File(
                 String.format(
                     "%s/%s.obj",
@@ -562,7 +689,7 @@ public class MainWindow extends javax.swing.JFrame {
                     editorTab.fileInfoRef.get().fileNameWithoutExt
                 )
             );
-            
+
             File disFile = new File(
                 String.format(
                     "%s/%s.dis",
@@ -570,7 +697,7 @@ public class MainWindow extends javax.swing.JFrame {
                     editorTab.fileInfoRef.get().fileNameWithoutExt
                 )
             );
-            
+
             if ( !objFile.exists() ) {
                 JOptionPane.showMessageDialog(
                     this,
@@ -579,19 +706,20 @@ public class MainWindow extends javax.swing.JFrame {
                     JOptionPane.ERROR_MESSAGE
                 );
             }
-            
+
             Disassembler.disassemble( objFile, disFile );
             DisassemblyWindow dw = new DisassemblyWindow(
                 String.format( "Disassembled code from %s to %s", objFile.getName(), disFile.getName() )
             );
             loadSourceCode( disFile, dw.getAssemblySourceCode() );
-            
+
             SwingUtilities.invokeLater( () -> dw.setVisible( true ) );
             SwingUtilities.invokeLater( () -> dw.getAssemblySourceCode().setCaretPosition( 0 ) );
-            
+
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
+
     }
 
     // -------------------------------------------------------------------------
@@ -604,6 +732,7 @@ public class MainWindow extends javax.swing.JFrame {
      */
     private EditorTab buildEditorTab( String title, SourceFileInfo fileInfo ) {
 
+        // --- Source code area ---
         RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
         sourceCodeArea.setCodeFoldingEnabled( false );
         sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ) );
@@ -620,10 +749,56 @@ public class MainWindow extends javax.swing.JFrame {
 
         RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
 
+        // --- Console: output pane ---
         JTextPane consoleTextPane = new JTextPane();
         consoleTextPane.setFont( DEFAULT_FONT );
+        consoleTextPane.setBackground( CONSOLE_BG_COLOR );
+        consoleTextPane.setForeground( CONSOLE_STDOUT_COLOR );
+        consoleTextPane.setEditable( false );
         JScrollPane consoleScroll = new JScrollPane( consoleTextPane );
 
+        // --- Console: input row ---
+        JLabel inputLabel = new JLabel( "  Input: " );
+        JTextField consoleInputField = new JTextField();
+        consoleInputField.setFont( DEFAULT_FONT );
+        consoleInputField.setEnabled( false );
+        JButton consoleEnterButton = new JButton( "Send" );
+        consoleEnterButton.setEnabled( false );
+
+        JPanel inputPanel = new JPanel( new BorderLayout( 4, 0 ) );
+        inputPanel.add( inputLabel, BorderLayout.WEST );
+        inputPanel.add( consoleInputField, BorderLayout.CENTER );
+        inputPanel.add( consoleEnterButton, BorderLayout.EAST );
+        inputPanel.setBorder( BorderFactory.createEmptyBorder( 4, 0, 4, 4 ) );
+
+        // --- Console: full panel ---
+        JPanel consolePanel = new JPanel( new BorderLayout() );
+        consolePanel.add( consoleScroll, BorderLayout.CENTER );
+        consolePanel.add( inputPanel, BorderLayout.SOUTH );
+
+        // Pipe reference (null when not running)
+        AtomicReference<PipedOutputStream> activePipedOut = new AtomicReference<>( null );
+
+        // Action: send typed input to the running CVM
+        Runnable sendInput = () -> {
+            PipedOutputStream pos = activePipedOut.get();
+            if ( pos != null ) {
+                String text = consoleInputField.getText();
+                consoleInputField.setText( "" );
+                // Echo the input back in a distinct color
+                appendToConsole( consoleTextPane, text + "\n", CONSOLE_ECHO_COLOR );
+                try {
+                    pos.write( ( text + "\n" ).getBytes() );
+                    pos.flush();
+                } catch ( IOException ex ) {
+                    // Pipe closed — program already finished
+                }
+            }
+        };
+        consoleInputField.addActionListener( e -> sendInput.run() );
+        consoleEnterButton.addActionListener( e -> sendInput.run() );
+
+        // --- Assembly pane ---
         RSyntaxTextArea assemblySourceCode = new RSyntaxTextArea();
         assemblySourceCode.setCodeFoldingEnabled( false );
         assemblySourceCode.setBackground( new Color( 0x3F3F3F, false ) );
@@ -638,12 +813,13 @@ public class MainWindow extends javax.swing.JFrame {
         assemblySourceCode.setSyntaxEditingStyle( "text/cprl" );
         assemblySourceCode.setEditable( false );
         applyColorScheme( assemblySourceCode );
-        
+
         RTextScrollPane assemblyScroll = new RTextScrollPane( assemblySourceCode );
 
+        // --- Split panes ---
         JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
         verticalSplit.setTopComponent( sp );
-        verticalSplit.setBottomComponent( consoleScroll );
+        verticalSplit.setBottomComponent( consolePanel );
 
         JSplitPane horizontalSplit = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT );
         horizontalSplit.setLeftComponent( verticalSplit );
@@ -663,7 +839,10 @@ public class MainWindow extends javax.swing.JFrame {
             verticalSplit,
             new AtomicReference<>( fileInfo ),
             new AtomicBoolean( false ),
-            titleLabel
+            titleLabel,
+            consoleInputField,
+            consoleEnterButton,
+            activePipedOut
         );
 
         editorTabs.put( container, tab );
@@ -762,7 +941,7 @@ public class MainWindow extends javax.swing.JFrame {
         tab.titleLabel.setText( tabTitle( tab ) );
     }
 
-    /** Returns the clean title for the tab (strips leading "* " if present). */
+    /** Returns the clean title (strips leading "* " if present). */
     private String tabTitle( EditorTab tab ) {
         String current = tab.titleLabel.getText();
         return current.startsWith( "* " ) ? current.substring( 2 ) : current;
@@ -784,6 +963,13 @@ public class MainWindow extends javax.swing.JFrame {
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
             adjustSplitPanes( editorTabs.get( c ) );
         }
+    }
+
+    /** Enables or disables compile/run toolbar buttons during CVM execution. */
+    private void setRunningState( boolean running ) {
+        btnCompile.setEnabled( !running );
+        btnCompileAndRun.setEnabled( !running );
+        btnDisassembly.setEnabled( !running );
     }
 
     // -------------------------------------------------------------------------
@@ -822,6 +1008,19 @@ public class MainWindow extends javax.swing.JFrame {
 
         sourceCodeArea.revalidate();
 
+    }
+
+    /** Appends styled text to the console pane (thread-safe via invokeLater). */
+    private static void appendToConsole( JTextPane textPane, String text, Color color ) {
+        StyledDocument doc = textPane.getStyledDocument();
+        Style style = textPane.addStyle( "output", null );
+        StyleConstants.setForeground( style, color );
+        try {
+            doc.insertString( doc.getLength(), text, style );
+            textPane.setCaretPosition( doc.getLength() );
+        } catch ( BadLocationException e ) {
+            // ignore
+        }
     }
 
     private void showErrorMessage( Exception exc ) {

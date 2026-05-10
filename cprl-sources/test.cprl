@@ -1,9 +1,0 @@
-// testes
-
-var x : Integer;
-
-begin
-    x := 10;
-    writeln "Hello, World!";
-    writeln "x = ", x;
-end.
