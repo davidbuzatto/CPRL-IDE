@@ -72,21 +72,51 @@ public class MainWindow extends javax.swing.JFrame {
     // -------------------------------------------------------------------------
     // Custom OutputStream that appends styled text to a JTextPane
     // -------------------------------------------------------------------------
+
+    /**
+     * An {@link OutputStream} that forwards every write to a {@link JTextPane}
+     * using a fixed foreground colour. All Swing updates are posted via
+     * {@link SwingUtilities#invokeLater} so the stream is safe to use from
+     * any thread (e.g. a {@link SwingWorker} background thread).
+     */
     private static class ConsoleOutputStream extends OutputStream {
 
         private final JTextPane textPane;
         private final Color color;
 
+        /**
+         * Creates a new {@code ConsoleOutputStream}.
+         *
+         * @param textPane the target pane where text will be appended
+         * @param color    the foreground colour for the appended text
+         */
         ConsoleOutputStream( JTextPane textPane, Color color ) {
             this.textPane = textPane;
             this.color = color;
         }
 
+        /**
+         * Writes a single byte by delegating to {@link #write(byte[], int, int)}.
+         *
+         * @param b the byte to write
+         * 
+         * @throws IOException if an I/O error occurs
+         */
         @Override
         public void write( int b ) throws IOException {
             write( new byte[]{ (byte) b }, 0, 1 );
         }
 
+        /**
+         * Converts the byte range to a {@code String} and appends it to the
+         * console pane on the Event Dispatch Thread.
+         *
+         * @param b   the data buffer
+         * @param off offset in {@code b} of the first byte to write
+         * @param len number of bytes to write
+         * 
+         * @throws IOException if an I/O error occurs
+         */
         @Override
         public void write( byte[] b, int off, int len ) throws IOException {
             String text = new String( b, off, len );
@@ -99,12 +129,43 @@ public class MainWindow extends javax.swing.JFrame {
     // Records
     // -------------------------------------------------------------------------
 
+    /**
+     * Holds file-system information for a CPRL source file that is currently
+     * open in an editor tab.
+     *
+     * @param file               the {@link File} handle pointing to the source
+     * @param parentDirPath      absolute path of the directory that contains the file
+     * @param fileNameWithoutExt file name without extension (used to derive
+     *                           {@code .asm}, {@code .obj} and {@code .dis} paths)
+     */
     private static record SourceFileInfo(
         File file,
         String parentDirPath,
         String fileNameWithoutExt
     ) {};
 
+    /**
+     * Aggregates every UI component and mutable state belonging to a single
+     * editor tab.  The record itself is immutable; mutable values are wrapped
+     * in {@link AtomicBoolean} or {@link AtomicReference} so they can be
+     * updated safely from any thread.
+     *
+     * @param sourceCodeArea     the CPRL source editor
+     * @param consoleTextPane    the read-only console output pane
+     * @param assemblySourceCode the read-only assembly output editor
+     * @param horizontalSplit    the horizontal {@link JSplitPane} (source | assembly)
+     * @param verticalSplit      the vertical {@link JSplitPane} (source / console)
+     * @param fileInfoRef        atomic reference to the associated {@link SourceFileInfo};
+     *                           {@code null} for untitled files
+     * @param isDirty            {@code true} when the editor content differs from
+     *                           the last saved version
+     * @param titleLabel         the tab header label (updated when dirty state changes)
+     * @param consoleInputField  text field used to send input to the running CVM
+     * @param consoleEnterButton button that submits the console input field
+     * @param activePipedOut     atomic reference to the {@link PipedOutputStream}
+     *                           connected to {@code System.in} during CVM execution;
+     *                           {@code null} when the CVM is not running
+     */
     private static record EditorTab(
         RSyntaxTextArea sourceCodeArea,
         JTextPane consoleTextPane,
@@ -136,6 +197,12 @@ public class MainWindow extends javax.swing.JFrame {
     // Constructor
     // -------------------------------------------------------------------------
 
+    /**
+     * Creates the IDE main window, registers the CPRL token maker, and
+     * initialises all internal state.  A test file is opened automatically
+     * so the window is never empty on startup (the path can be changed or
+     * commented out for production use).
+     */
     public MainWindow() {
 
         initComponents();
@@ -298,6 +365,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void tabbedPaneSourceCodeStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tabbedPaneSourceCodeStateChanged
 
+        // The very first change event is fired during construction - ignore it.
         if ( skipInitialTabChange ) {
             skipInitialTabChange = false;
             return;
@@ -364,7 +432,9 @@ public class MainWindow extends javax.swing.JFrame {
                 );
 
                 if ( choice == JOptionPane.YES_OPTION ) {
-                    if ( !saveFile( tab ) ) return;
+                    if ( !saveFile( tab ) ) {
+                        return;
+                    }
                 } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
                     return;
                 }
@@ -417,14 +487,24 @@ public class MainWindow extends javax.swing.JFrame {
     // File management
     // -------------------------------------------------------------------------
 
+    /**
+     * Creates a new untitled editor tab and registers its document listener.
+     * The tab is immediately selected and ready for editing.
+     */
     private void newFile() {
-
         String title = "Untitled-" + ( ++untitledCounter );
         EditorTab tab = buildEditorTab( title, null );
         registerDocumentListener( tab );
-
     }
 
+    /**
+     * Opens a CPRL source file in a new editor tab.  If the file is already
+     * open, the method returns without creating a duplicate tab.
+     *
+     * @param file the source file to open
+     * 
+     * @throws IOException if the file cannot be read
+     */
     private void openFile( File file ) throws IOException {
 
         if ( openedFilePaths.contains( file.getAbsolutePath() ) ) {
@@ -440,8 +520,14 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     /**
-     * Saves the file. If new/untitled, opens a Save As dialog.
-     * Returns false if the user cancels or if the write fails.
+     * Saves the editor content of {@code tab} to disk.  If the tab has no
+     * associated file yet (untitled), a Save As dialog is shown first.
+     *
+     * @param tab the editor tab to save
+     * 
+     * @return {@code true} if the file was saved successfully;
+     *         {@code false} if the user cancelled the Save As dialog or if
+     *         the write operation failed
      */
     private boolean saveFile( EditorTab tab ) {
         if ( tab.fileInfoRef.get() == null ) {
@@ -450,7 +536,15 @@ public class MainWindow extends javax.swing.JFrame {
         return writeFile( tab );
     }
 
-    /** Always opens a Save As dialog. Returns false if the user cancels. */
+    /**
+     * Always opens a Save As dialog, regardless of whether the tab already has
+     * an associated file.  Updates {@link #openedFilePaths} accordingly.
+     *
+     * @param tab the editor tab to save
+     * 
+     * @return {@code true} if the user confirmed and the write succeeded;
+     *         {@code false} if the user cancelled the dialog
+     */
     private boolean saveFileAs( EditorTab tab ) {
 
         JFileChooser jfc = new JFileChooser( "./" );
@@ -480,7 +574,15 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
-    /** Writes tab content to disk and marks the tab as clean. Returns false if the write fails. */
+    /**
+     * Writes the current editor content of {@code tab} to the file referenced
+     * by its {@link SourceFileInfo} and marks the tab as clean.
+     *
+     * @param tab the editor tab whose content should be persisted
+     * 
+     * @return {@code true} if the write succeeded; {@code false} if an
+     *         {@link IOException} occurred (an error dialog is also shown)
+     */
     private boolean writeFile( EditorTab tab ) {
         try ( FileWriter fw = new FileWriter( tab.fileInfoRef.get().file ) ) {
             fw.write( tab.sourceCodeArea.getText() );
@@ -492,6 +594,16 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
 
+    /**
+     * Reads a file line-by-line and sets the content of {@code sourceCodeArea}.
+     * The caret is repositioned to the beginning of the document via
+     * {@link SwingUtilities#invokeLater} after the text is set.
+     *
+     * @param file           the file to read
+     * @param sourceCodeArea the text area that will receive the file content
+     * 
+     * @throws IOException if the file cannot be read
+     */
     private void loadSourceCode( File file, RSyntaxTextArea sourceCodeArea ) throws IOException {
 
         try ( Scanner s = new Scanner( file ) ) {
@@ -510,6 +622,13 @@ public class MainWindow extends javax.swing.JFrame {
     // Compiler pipeline
     // -------------------------------------------------------------------------
 
+    /**
+     * Compiles the CPRL source file associated with {@code editorTab}.
+     * Compiler error messages are written to {@code System.err}, which is
+     * redirected to the internal console by {@link #executePipeline}.
+     *
+     * @param editorTab the tab whose source file should be compiled
+     */
     private void compile( EditorTab editorTab ) {
         try {
             File sourceFile = new File(
@@ -526,6 +645,12 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
 
+    /**
+     * Assembles the {@code .asm} file produced by {@link #compile} and loads
+     * the resulting assembly text into the assembly pane of {@code editorTab}.
+     *
+     * @param editorTab the tab whose assembly file should be assembled
+     */
     private void assemble( EditorTab editorTab ) {
         try {
             File asmFile = new File(
@@ -544,92 +669,107 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     /**
-     * Unified pipeline: compiles and assembles the active file, then — depending
-     * on the flags — either stops there, runs the CVM, or runs the disassembler.
-     *
-     * All compiler / assembler / CVM / disassembler output is sent to the tab's
-     * internal console so the user never has to look at the IDE output window.
+     * Unified build pipeline for the active editor tab.  The full sequence is:
+     * <ol>
+     *   <li>Save the source file (aborts if cancelled or write fails).</li>
+     *   <li>Clear the internal console.</li>
+     *   <li>Delete stale build artefacts ({@code .asm}, {@code .obj},
+     *       {@code .dis}) so a failed build can never silently run old code.</li>
+     *   <li>Redirect {@code System.out}/{@code System.err} to the console.</li>
+     *   <li>Compile; abort if no {@code .asm} was produced.</li>
+     *   <li>Assemble; abort if no {@code .obj} was produced.</li>
+     *   <li>Depending on the flags: stop, disassemble, or run the CVM.</li>
+     * </ol>
+     * CVM execution runs inside a {@link SwingWorker} to keep the EDT
+     * responsive while the program waits for user input. The original streams
+     * are always restored when the pipeline finishes.
      *
      * @param tab             the editor tab to operate on
-     * @param runCvm          true to execute the CVM after a successful build
-     * @param showDisassembly true to disassemble after a successful build
+     * @param runCvm          {@code true} to execute the CVM after a successful build
+     * @param showDisassembly {@code true} to disassemble after a successful build
      */
     private void executePipeline( EditorTab tab, boolean runCvm, boolean showDisassembly ) {
 
-        // 1. Save file — if untitled, opens Save As; aborts pipeline on cancel or write failure
+        // 1. Save file - if untitled, opens Save As; aborts pipeline on cancel or write failure.
         if ( !saveFile( tab ) ) {
             return;
         }
 
         SourceFileInfo fi = tab.fileInfoRef.get();
         if ( fi == null ) {
-            return; // guard: should not happen after a successful save
+            return; // Guard: should not happen after a successful save.
         }
 
-        // 2. Clear console
+        // 2. Clear console.
         tab.consoleTextPane.setText( "" );
 
-        // 3. Delete stale build artefacts so a failed build can never run old code
+        // 3. Delete stale build artefacts so a failed build can never run old code.
         for ( String ext : new String[]{ "asm", "obj", "dis" } ) {
             new File( String.format( "%s/%s.%s", fi.parentDirPath, fi.fileNameWithoutExt, ext ) ).delete();
         }
 
-        // 4. Save original streams
+        // 4. Save original streams so they can be restored after the pipeline.
         PrintStream origOut = System.out;
         PrintStream origErr = System.err;
         InputStream  origIn  = System.in;
 
-        // 5. Redirect stdout / stderr to the internal console
+        // 5. Redirect stdout / stderr to the internal console.
         System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDOUT_COLOR ), true ) );
         System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDERR_COLOR ), true ) );
 
-        // 6. Compile
+        // 6. Compile.
         compile( tab );
 
-        // 7. Assemble — only if the compiler produced an .asm file
+        // 7. Assemble - only if the compiler produced an .asm file.
         File asmFile = new File( String.format( "%s/%s.asm", fi.parentDirPath, fi.fileNameWithoutExt ) );
         if ( asmFile.exists() ) {
             assemble( tab );
         } else {
-            appendToConsole( tab.consoleTextPane,
-                "\n[Build stopped: no assembly file produced — fix the compilation errors above.]\n",
-                CONSOLE_STDERR_COLOR );
+            appendToConsole(
+                tab.consoleTextPane,
+                "\n[Build stopped: no assembly file produced - fix the compilation errors above.]\n",
+                CONSOLE_STDERR_COLOR
+            );
         }
 
-        // ---- Compile-only path: restore and return ----
+        // ---- Compile-only path: restore streams and return. ----
         if ( !runCvm && !showDisassembly ) {
             System.setOut( origOut );
             System.setErr( origErr );
             return;
         }
 
-        // ---- Disassembly path: synchronous, then restore and return ----
+        // ---- Disassembly path: run synchronously, then restore streams and return. ----
         if ( showDisassembly ) {
             File objFile = new File( String.format( "%s/%s.obj", fi.parentDirPath, fi.fileNameWithoutExt ) );
             if ( objFile.exists() ) {
                 disassemble( tab );
             } else {
-                appendToConsole( tab.consoleTextPane,
-                    "\n[Disassembly stopped: no object file produced — fix the build errors above.]\n",
-                    CONSOLE_STDERR_COLOR );
+                appendToConsole(
+                    tab.consoleTextPane,
+                    "\n[Disassembly stopped: no object file produced - fix the build errors above.]\n",
+                    CONSOLE_STDERR_COLOR
+                );
             }
             System.setOut( origOut );
             System.setErr( origErr );
             return;
         }
 
-        // ---- Run-CVM path: check .obj exists, then run in background ----
+        // ---- Run-CVM path: verify .obj exists, then run in background. ----
         File objFile = new File( String.format( "%s/%s.obj", fi.parentDirPath, fi.fileNameWithoutExt ) );
         if ( !objFile.exists() ) {
-            appendToConsole( tab.consoleTextPane,
-                "\n[Execution stopped: no object file produced — fix the build errors above.]\n",
-                CONSOLE_STDERR_COLOR );
+            appendToConsole(
+                tab.consoleTextPane,
+                "\n[Execution stopped: no object file produced - fix the build errors above.]\n",
+                CONSOLE_STDERR_COLOR
+            );
             System.setOut( origOut );
             System.setErr( origErr );
             return;
         }
 
-        // Set up stdin pipe for interactive CVM input
+        // Set up stdin pipe for interactive CVM input.
         PipedOutputStream pipedOut = new PipedOutputStream();
         PipedInputStream  pipedIn;
         try {
@@ -663,17 +803,25 @@ public class MainWindow extends javax.swing.JFrame {
             @Override
             protected void done() {
 
+                // Restore original streams.
                 System.setOut( origOut );
                 System.setErr( origErr );
                 System.setIn( origIn );
 
+                // Close the stdin pipe.
                 tab.activePipedOut.set( null );
-                try { pipedOut.close(); } catch ( IOException e ) { /* ignore */ }
+                try {
+                    pipedOut.close();
+                } catch ( IOException e ) {
+                    // Nothing meaningful to do if closing the pipe fails.
+                }
 
+                // Re-enable toolbar and disable input controls.
                 tab.consoleInputField.setEnabled( false );
                 tab.consoleEnterButton.setEnabled( false );
                 setRunningState( false );
 
+                // Surface any runtime exception in the console.
                 try {
                     get();
                 } catch ( Exception e ) {
@@ -693,6 +841,14 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
+    /**
+     * Disassembles the {@code .obj} file for {@code editorTab} into a
+     * {@code .dis} file and opens the result in a new {@link DisassemblyWindow}.
+     * The caller is responsible for verifying that the {@code .obj} file exists
+     * before calling this method.
+     *
+     * @param editorTab the tab whose object file should be disassembled
+     */
     private void disassemble( EditorTab editorTab ) {
 
         try {
@@ -733,8 +889,17 @@ public class MainWindow extends javax.swing.JFrame {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds all UI components for an editor tab, registers it in the map and
-     * sets it as active. fileInfo may be null for new/untitled files.
+     * Creates and wires all UI components that make up a single editor tab:
+     * the CPRL source editor, the console output pane with its input row,
+     * the read-only assembly pane, and the split panes that arrange them.
+     * The new tab is added to the tabbed pane, selected, and registered in
+     * {@link #editorTabs}.
+     *
+     * @param title    text displayed in the tab header
+     * @param fileInfo associated source-file metadata; {@code null} for
+     *                 untitled files
+     * 
+     * @return the newly created {@link EditorTab}
      */
     private EditorTab buildEditorTab( String title, SourceFileInfo fileInfo ) {
 
@@ -785,19 +950,20 @@ public class MainWindow extends javax.swing.JFrame {
         // Pipe reference (null when not running)
         AtomicReference<PipedOutputStream> activePipedOut = new AtomicReference<>( null );
 
-        // Action: send typed input to the running CVM
+        // Runnable that reads the input field and forwards the text to the CVM via the stdin pipe.
         Runnable sendInput = () -> {
             PipedOutputStream pos = activePipedOut.get();
             if ( pos != null ) {
                 String text = consoleInputField.getText();
                 consoleInputField.setText( "" );
-                // Echo the input back in a distinct color
+                // Echo the submitted text in a distinct colour so the user can
+                // distinguish their input from the program's output.
                 appendToConsole( consoleTextPane, text + "\n", CONSOLE_ECHO_COLOR );
                 try {
                     pos.write( ( text + "\n" ).getBytes() );
                     pos.flush();
                 } catch ( IOException ex ) {
-                    // Pipe closed — program already finished
+                    // Pipe closed - the CVM already finished; nothing to do.
                 }
             }
         };
@@ -863,6 +1029,16 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
+    /**
+     * Adds a tab with a custom header that contains a title label and a close
+     * button.  Clicking the close button triggers {@link #closeTab(int)}.
+     *
+     * @param title   text shown in the tab header
+     * @param content the component placed in the tab body
+     * 
+     * @return the {@link JLabel} used as the tab title, kept so dirty-state
+     *         changes can update it later
+     */
     private JLabel addClosableTab( String title, Component content ) {
 
         tabbedPaneSourceCode.addTab( title, content );
@@ -893,6 +1069,13 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
+    /**
+     * Closes the tab at the given index.  If the tab has unsaved changes a
+     * confirmation dialog is shown, giving the user the option to save, discard,
+     * or cancel the close operation.
+     *
+     * @param index zero-based index of the tab to close
+     */
     private void closeTab( int index ) {
 
         JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( index );
@@ -908,7 +1091,9 @@ public class MainWindow extends javax.swing.JFrame {
                 JOptionPane.WARNING_MESSAGE
             );
             if ( choice == JOptionPane.YES_OPTION ) {
-                if ( !saveFile( tab ) ) return;
+                if ( !saveFile( tab ) ) {
+                    return;
+                }
             } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
                 return;
             }
@@ -927,14 +1112,35 @@ public class MainWindow extends javax.swing.JFrame {
     // Dirty state tracking
     // -------------------------------------------------------------------------
 
+    /**
+     * Attaches a {@link DocumentListener} to the source editor of {@code tab}
+     * so that any text insertion or removal automatically marks the tab as dirty.
+     *
+     * @param tab the editor tab whose source area should be monitored
+     */
     private void registerDocumentListener( EditorTab tab ) {
         tab.sourceCodeArea.getDocument().addDocumentListener( new DocumentListener() {
-            @Override public void insertUpdate( DocumentEvent e ) { markDirty( tab ); }
-            @Override public void removeUpdate( DocumentEvent e ) { markDirty( tab ); }
-            @Override public void changedUpdate( DocumentEvent e ) { }
+            @Override
+            public void insertUpdate( DocumentEvent e ) {
+                markDirty( tab );
+            }
+            @Override
+            public void removeUpdate( DocumentEvent e ) {
+                markDirty( tab );
+            }
+            @Override
+            public void changedUpdate( DocumentEvent e ) {
+                // Attribute changes (e.g. syntax highlighting) do not affect dirty state.
+            }
         } );
     }
 
+    /**
+     * Marks {@code tab} as having unsaved changes and prepends {@code "* "} to
+     * its title label.  Has no effect if the tab is already dirty.
+     *
+     * @param tab the editor tab to mark as dirty
+     */
     private void markDirty( EditorTab tab ) {
         if ( !tab.isDirty.get() ) {
             tab.isDirty.set( true );
@@ -942,12 +1148,24 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
 
+    /**
+     * Clears the dirty flag of {@code tab} and restores its plain title label.
+     *
+     * @param tab the editor tab to mark as clean
+     */
     private void markClean( EditorTab tab ) {
         tab.isDirty.set( false );
         tab.titleLabel.setText( tabTitle( tab ) );
     }
 
-    /** Returns the clean title (strips leading "* " if present). */
+    /**
+     * Returns the clean (non-dirty) title of {@code tab} by stripping the
+     * leading {@code "* "} prefix if present.
+     *
+     * @param tab the editor tab whose title is needed
+     * 
+     * @return the title string without any dirty-state prefix
+     */
     private String tabTitle( EditorTab tab ) {
         String current = tab.titleLabel.getText();
         return current.startsWith( "* " ) ? current.substring( 2 ) : current;
@@ -957,6 +1175,13 @@ public class MainWindow extends javax.swing.JFrame {
     // Layout helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Resets the divider positions of both split panes in {@code tab} to
+     * 70 % / 30 %.  The update is posted via {@link SwingUtilities#invokeLater}
+     * so it takes effect after the component has been laid out.
+     *
+     * @param tab the editor tab whose split panes should be adjusted
+     */
     private void adjustSplitPanes( EditorTab tab ) {
         SwingUtilities.invokeLater( () -> {
             tab.horizontalSplit.setDividerLocation( 0.7 );
@@ -964,6 +1189,10 @@ public class MainWindow extends javax.swing.JFrame {
         } );
     }
 
+    /**
+     * Calls {@link #adjustSplitPanes(EditorTab)} for every open editor tab.
+     * Typically invoked when the main window is resized.
+     */
     private void adjustAllSplitPanes() {
         for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
             JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
@@ -971,7 +1200,15 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
 
-    /** Enables or disables compile/run toolbar buttons during CVM execution. */
+    /**
+     * Enables or disables the compile, compile-and-run and disassembly toolbar
+     * buttons.  Called with {@code true} when the CVM starts and {@code false}
+     * when it finishes, preventing the user from launching multiple pipelines
+     * simultaneously.
+     *
+     * @param running {@code true} to disable the buttons; {@code false} to
+     *                re-enable them
+     */
     private void setRunningState( boolean running ) {
         btnCompile.setEnabled( !running );
         btnCompileAndRun.setEnabled( !running );
@@ -982,6 +1219,14 @@ public class MainWindow extends javax.swing.JFrame {
     // Utilities
     // -------------------------------------------------------------------------
 
+    /**
+     * Builds a {@link SourceFileInfo} from a {@link File} handle by extracting
+     * the parent directory path and the file name without its extension.
+     *
+     * @param file the source file
+     * 
+     * @return a populated {@link SourceFileInfo} for the given file
+     */
     private SourceFileInfo getSourceFileInfo( File file ) {
         String parentDirPath = file.getParentFile().getPath();
         String fileNameWithoutExt = file.getName();
@@ -989,10 +1234,16 @@ public class MainWindow extends javax.swing.JFrame {
         return new SourceFileInfo( file, parentDirPath, fileNameWithoutExt );
     }
 
+    /**
+     * Applies the IDE colour scheme to an {@link RSyntaxTextArea}.  Sets fonts
+     * and foreground colours for every relevant token type used by the CPRL
+     * language definition.
+     *
+     * @param sourceCodeArea the text area to style
+     */
     public static void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
 
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
-
         Font plain = DEFAULT_FONT;
 
         scheme.getStyle( Token.RESERVED_WORD ).font = plain;
@@ -1001,22 +1252,31 @@ public class MainWindow extends javax.swing.JFrame {
         scheme.getStyle( Token.DATA_TYPE ).font = plain;
         scheme.getStyle( Token.OPERATOR ).font = plain;
 
-        scheme.getStyle( Token.COMMENT_EOL ).foreground = new Color( 0x808080, false );
-        scheme.getStyle( Token.IDENTIFIER ).foreground = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground = new Color( 0x79B8FF, false );
-        scheme.getStyle( Token.LITERAL_CHAR ).foreground = new Color( 0x9ECBFF, false );
-        scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.COMMENT_EOL ).foreground                 = new Color( 0x808080, false );
+        scheme.getStyle( Token.IDENTIFIER ).foreground                  = new Color( 0xFFFFFF, false );
+        scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground             = new Color( 0x79B8FF, false );
+        scheme.getStyle( Token.LITERAL_CHAR ).foreground                = new Color( 0x9ECBFF, false );
+        scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground  = new Color( 0x79B8FF, false );
         scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x9ECBFF, false );
-        scheme.getStyle( Token.OPERATOR ).foreground = new Color( 0xFF8040, false );
-        scheme.getStyle( Token.RESERVED_WORD ).foreground = new Color( 0xF97583, false );
-        scheme.getStyle( Token.DATA_TYPE ).foreground = new Color( 0xB392F0, false );
-        scheme.getStyle( Token.SEPARATOR ).foreground = new Color( 0xFFFFFF, false );
+        scheme.getStyle( Token.OPERATOR ).foreground                    = new Color( 0xFF8040, false );
+        scheme.getStyle( Token.RESERVED_WORD ).foreground               = new Color( 0xF97583, false );
+        scheme.getStyle( Token.DATA_TYPE ).foreground                   = new Color( 0xB392F0, false );
+        scheme.getStyle( Token.SEPARATOR ).foreground                   = new Color( 0xFFFFFF, false );
 
         sourceCodeArea.revalidate();
 
     }
 
-    /** Appends styled text to the console pane (thread-safe via invokeLater). */
+    /**
+     * Appends {@code text} to {@code textPane} using {@code color} as the
+     * foreground colour, then scrolls the pane to the end.  Must be called on
+     * the Event Dispatch Thread (the {@link ConsoleOutputStream} already
+     * guarantees this via {@link SwingUtilities#invokeLater}).
+     *
+     * @param textPane the console pane to append to
+     * @param text     the text to append
+     * @param color    the foreground colour for the appended text
+     */
     private static void appendToConsole( JTextPane textPane, String text, Color color ) {
         StyledDocument doc = textPane.getStyledDocument();
         Style style = textPane.addStyle( "output", null );
@@ -1025,10 +1285,15 @@ public class MainWindow extends javax.swing.JFrame {
             doc.insertString( doc.getLength(), text, style );
             textPane.setCaretPosition( doc.getLength() );
         } catch ( BadLocationException e ) {
-            // ignore
+            // BadLocationException should never occur when appending to the end.
         }
     }
 
+    /**
+     * Shows a modal error dialog with the message from {@code exc}.
+     *
+     * @param exc the exception whose message should be displayed
+     */
     private void showErrorMessage( Exception exc ) {
         JOptionPane.showMessageDialog(
             null,
@@ -1038,6 +1303,12 @@ public class MainWindow extends javax.swing.JFrame {
         );
     }
 
+    /**
+     * Application entry point. Installs the FlatDarkLaf look-and-feel and
+     * opens the main window on the Event Dispatch Thread.
+     *
+     * @param args command-line arguments (not used)
+     */
     public static void main( String args[] ) {
         FlatDarkLaf.setup();
         SwingUtilities.invokeLater( () -> new MainWindow().setVisible( true ) );

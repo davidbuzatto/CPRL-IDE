@@ -4,3 +4,4 @@
 /.claude/
 *.asm
 *.obj
+*.dis
