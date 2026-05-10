@@ -1,10 +1,10 @@
 package br.com.davidbuzatto.cprl.ide.gui;
 
-import br.com.davidbuzatto.cprl.Disassembler;
+import br.com.davidbuzatto.cprl.cvm.Disassembler;
+import br.com.davidbuzatto.cprl.cvm.Assembler;
+import br.com.davidbuzatto.cprl.cvm.CVM;
+import br.com.davidbuzatto.cprl.cvm.Compiler;
 import com.formdev.flatlaf.FlatDarkLaf;
-import edu.citadel.compiler.Compiler;
-import edu.citadel.cvm.CVM;
-import edu.citadel.cvm.assembler.Assembler;
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -706,13 +706,16 @@ public class MainWindow extends javax.swing.JFrame {
 
         // 3. Delete stale build artefacts so a failed build can never run old code.
         for ( String ext : new String[]{ "asm", "obj", "dis" } ) {
-            new File( String.format( "%s/%s.%s", fi.parentDirPath, fi.fileNameWithoutExt, ext ) ).delete();
+            File fileToDelete = new File( String.format( "%s/%s.%s", fi.parentDirPath, fi.fileNameWithoutExt, ext ) );
+            if ( fileToDelete.exists() ) {
+                fileToDelete.delete();
+            }
         }
 
         // 4. Save original streams so they can be restored after the pipeline.
         PrintStream origOut = System.out;
         PrintStream origErr = System.err;
-        InputStream  origIn  = System.in;
+        InputStream origIn  = System.in;
 
         // 5. Redirect stdout / stderr to the internal console.
         System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDOUT_COLOR ), true ) );
@@ -793,11 +796,14 @@ public class MainWindow extends javax.swing.JFrame {
 
             @Override
             protected Void doInBackground() throws Exception {
-                FileInputStream o = new FileInputStream( objFile );
-                Instruction.resetMaps();
-                CVM vm = new CVM( 8192 );
-                vm.loadProgram( o );
-                vm.run();
+                // Use try-with-resources so the .obj FileInputStream is closed
+                // immediately after loadProgram(), releasing the file handle on Windows.
+                try ( FileInputStream o = new FileInputStream( objFile ) ) {
+                    Instruction.resetMaps();
+                    CVM vm = new CVM( 8192 );
+                    vm.loadProgram( o );
+                    vm.run();
+                }
                 return null;
             }
 

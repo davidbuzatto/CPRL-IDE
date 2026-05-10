@@ -1,4 +1,4 @@
-package br.com.davidbuzatto.cprl;
+package br.com.davidbuzatto.cprl.cvm;
 
 import edu.citadel.compiler.util.ByteUtil;
 import edu.citadel.compiler.util.StringUtil;
