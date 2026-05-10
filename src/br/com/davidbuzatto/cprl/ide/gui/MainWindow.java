@@ -236,12 +236,14 @@ public class MainWindow extends javax.swing.JFrame {
         if ( LOAD_TEST_FILES ) {
             try {
                 openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
-                //openFile( new File( "cprl-examples/Optimizations.cprl" ) );
-                //openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
+                openFile( new File( "cprl-examples/Optimizations.cprl" ) );
+                openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
             } catch ( IOException exc ) {
                 showErrorMessage( exc );
             }
         }
+        
+        setExtendedState( MAXIMIZED_BOTH );
 
     }
 
@@ -261,6 +263,24 @@ public class MainWindow extends javax.swing.JFrame {
         InputMap inputMap = getRootPane().getInputMap( JComponent.WHEN_IN_FOCUSED_WINDOW );
         ActionMap actionMap = getRootPane().getActionMap();
 
+        // Ctrl+N - Save
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_N, KeyEvent.CTRL_DOWN_MASK ), "new" );
+        actionMap.put( "new", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnNew.doClick();
+            }
+        } );
+        
+        // Ctrl+O - Open
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_O, KeyEvent.CTRL_DOWN_MASK ), "open" );
+        actionMap.put( "open", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnOpen.doClick();
+            }
+        } );
+        
         // Ctrl+S - Save
         inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK ), "save" );
         actionMap.put( "save", new AbstractAction() {
@@ -279,12 +299,30 @@ public class MainWindow extends javax.swing.JFrame {
             }
         } );
 
-        // F6 - Compile and Run
+        // Shift+F5 - Compile
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F5, KeyEvent.SHIFT_DOWN_MASK ), "compile" );
+        actionMap.put( "compile", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnCompile.doClick();
+            }
+        } );
+        
+        // Shift+F6 - Compile and Run
         inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F6, KeyEvent.SHIFT_DOWN_MASK ), "compileAndRun" );
         actionMap.put( "compileAndRun", new AbstractAction() {
             @Override
             public void actionPerformed( ActionEvent e ) {
                 btnCompileAndRun.doClick();
+            }
+        } );
+        
+        // Shift+F7 - Disassembly
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F7, KeyEvent.SHIFT_DOWN_MASK ), "disassembly" );
+        actionMap.put( "disassembly", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnDisassembly.doClick();
             }
         } );
 
@@ -326,7 +364,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.setRollover(true);
 
         btnNew.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/page_white_add.png"))); // NOI18N
-        btnNew.setToolTipText("New File");
+        btnNew.setToolTipText("New File (Ctrl+N)");
         btnNew.setFocusable(false);
         btnNew.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnNew.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -334,7 +372,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnNew);
 
         btnOpen.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/folder.png"))); // NOI18N
-        btnOpen.setToolTipText("Open File");
+        btnOpen.setToolTipText("Open File (Ctrl+O)");
         btnOpen.setFocusable(false);
         btnOpen.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnOpen.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -342,6 +380,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnOpen);
 
         btnSave.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk.png"))); // NOI18N
+        btnSave.setToolTipText("Save (Ctrl+S)");
         btnSave.setFocusable(false);
         btnSave.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSave.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -349,6 +388,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnSave);
 
         btnSaveAs.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_add.png"))); // NOI18N
+        btnSaveAs.setToolTipText("Save As...");
         btnSaveAs.setFocusable(false);
         btnSaveAs.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSaveAs.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -356,7 +396,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnSaveAs);
 
         btnSaveAll.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"))); // NOI18N
-        btnSaveAll.setToolTipText("Save All Files");
+        btnSaveAll.setToolTipText("Save All (Ctrl+Shift+S)");
         btnSaveAll.setFocusable(false);
         btnSaveAll.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnSaveAll.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -365,7 +405,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(sep01);
 
         btnCompile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/cog.png"))); // NOI18N
-        btnCompile.setToolTipText("Compile");
+        btnCompile.setToolTipText("Compile (Shift+F5)");
         btnCompile.setFocusable(false);
         btnCompile.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnCompile.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -373,7 +413,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(btnCompile);
 
         btnCompileAndRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"))); // NOI18N
-        btnCompileAndRun.setToolTipText("Compile and Run");
+        btnCompileAndRun.setToolTipText("Compile and Run (Shift+F6)");
         btnCompileAndRun.setFocusable(false);
         btnCompileAndRun.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnCompileAndRun.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -382,7 +422,7 @@ public class MainWindow extends javax.swing.JFrame {
         toolbar.add(sep02);
 
         btnDisassembly.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/arrow_undo.png"))); // NOI18N
-        btnDisassembly.setToolTipText("Disassembly");
+        btnDisassembly.setToolTipText("Disassembly (Shift+F7)");
         btnDisassembly.setFocusable(false);
         btnDisassembly.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnDisassembly.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -391,9 +431,12 @@ public class MainWindow extends javax.swing.JFrame {
 
         tabbedPaneSourceCode.addChangeListener(this::tabbedPaneSourceCodeStateChanged);
 
+        menuHelp.setMnemonic('H');
         menuHelp.setText("Help");
 
+        menuItemAbout.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1, 0));
         menuItemAbout.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/help.png"))); // NOI18N
+        menuItemAbout.setMnemonic('A');
         menuItemAbout.setText("About...");
         menuItemAbout.addActionListener(this::menuItemAboutActionPerformed);
         menuHelp.add(menuItemAbout);
