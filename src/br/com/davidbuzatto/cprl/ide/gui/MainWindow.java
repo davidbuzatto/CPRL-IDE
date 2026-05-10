@@ -11,6 +11,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -27,8 +29,11 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
+import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -39,6 +44,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
@@ -207,6 +213,7 @@ public class MainWindow extends javax.swing.JFrame {
     public MainWindow() {
 
         initComponents();
+        initKeyboardShortcuts();
         setIconImage( new ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png") ).getImage() );
 
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
@@ -217,14 +224,59 @@ public class MainWindow extends javax.swing.JFrame {
         openedFilePaths = new HashSet<>();
         skipInitialTabChange = true;
         untitledCounter = 0;
-
-        try {
+        
+        /*try {
             openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
             openFile( new File( "cprl-examples/Optimizations.cprl" ) );
             openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
         } catch ( IOException exc ) {
             showErrorMessage( exc );
-        }
+        }*/
+
+    }
+
+    /**
+     * Registers application-wide keyboard shortcuts on the root pane using
+     * {@link JComponent#WHEN_IN_FOCUSED_WINDOW} so that the bindings fire
+     * regardless of which component currently holds keyboard focus.
+     *
+     * <ul>
+     *   <li><b>Ctrl+S</b> — Save the active file.</li>
+     *   <li><b>Ctrl+Shift+S</b> — Save all open files.</li>
+     *   <li><b>F6</b> — Compile and run the active file.</li>
+     * </ul>
+     */
+    private void initKeyboardShortcuts() {
+
+        InputMap inputMap = getRootPane().getInputMap( JComponent.WHEN_IN_FOCUSED_WINDOW );
+        ActionMap actionMap = getRootPane().getActionMap();
+
+        // Ctrl+S - Save
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK ), "save" );
+        actionMap.put( "save", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnSave.doClick();
+            }
+        } );
+
+        // Ctrl+Shift+S - Save All
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK ), "saveAll" );
+        actionMap.put( "saveAll", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnSaveAll.doClick();
+            }
+        } );
+
+        // F6 - Compile and Run
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F6, KeyEvent.SHIFT_DOWN_MASK ), "compileAndRun" );
+        actionMap.put( "compileAndRun", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                btnCompileAndRun.doClick();
+            }
+        } );
 
     }
 
