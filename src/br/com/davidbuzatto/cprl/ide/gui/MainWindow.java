@@ -1,10 +1,13 @@
 package br.com.davidbuzatto.cprl.ide.gui;
 
+import br.com.davidbuzatto.cprl.custom.Compiler;
+import br.com.davidbuzatto.cprl.custom.CVM;
+import br.com.davidbuzatto.cprl.custom.Assembler;
 import br.com.davidbuzatto.cprl.custom.Disassembler;
 import com.formdev.flatlaf.FlatDarkLaf;
-import edu.citadel.compiler.Compiler;
+/*import edu.citadel.compiler.Compiler;
 import edu.citadel.cvm.CVM;
-import edu.citadel.cvm.assembler.Assembler;
+import edu.citadel.cvm.assembler.Assembler;*/
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -215,7 +218,11 @@ public class MainWindow extends javax.swing.JFrame {
 
         initComponents();
         initKeyboardShortcuts();
-        setIconImage( new ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png") ).getImage() );
+        setIconImage( new ImageIcon( 
+            getClass().getResource( 
+                "/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png"
+            )
+        ).getImage() );
 
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
         ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
@@ -229,8 +236,8 @@ public class MainWindow extends javax.swing.JFrame {
         if ( LOAD_TEST_FILES ) {
             try {
                 openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
-                openFile( new File( "cprl-examples/Optimizations.cprl" ) );
-                openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
+                //openFile( new File( "cprl-examples/Optimizations.cprl" ) );
+                //openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
             } catch ( IOException exc ) {
                 showErrorMessage( exc );
             }
@@ -685,8 +692,10 @@ public class MainWindow extends javax.swing.JFrame {
      * redirected to the internal console by {@link #executePipeline}.
      *
      * @param editorTab the tab whose source file should be compiled
+     * 
+     * @return true if the file was compiled, false otherwise
      */
-    private void compile( EditorTab editorTab ) {
+    private boolean compile( EditorTab editorTab ) {
         try {
             File sourceFile = new File(
                 String.format(
@@ -696,10 +705,11 @@ public class MainWindow extends javax.swing.JFrame {
                 )
             );
             Compiler c = new Compiler( sourceFile );
-            c.compile();
+            return c.compile();
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
+        return false;
     }
 
     /**
@@ -707,8 +717,10 @@ public class MainWindow extends javax.swing.JFrame {
      * the resulting assembly text into the assembly pane of {@code editorTab}.
      *
      * @param editorTab the tab whose assembly file should be assembled
+     * 
+     * @return true if the file was assembled, false otherwise
      */
-    private void assemble( EditorTab editorTab ) {
+    private boolean assemble( EditorTab editorTab ) {
         try {
             File asmFile = new File(
                 String.format(
@@ -718,11 +730,11 @@ public class MainWindow extends javax.swing.JFrame {
                 )
             );
             Assembler a = new Assembler( asmFile );
-            a.assemble();
-            loadSourceCode( asmFile, editorTab.assemblySourceCode );
+            return a.assemble();
         } catch ( IOException exc ) {
             showErrorMessage( exc );
         }
+        return false;
     }
 
     /**
@@ -757,8 +769,9 @@ public class MainWindow extends javax.swing.JFrame {
             return; // Guard: should not happen after a successful save.
         }
 
-        // 2. Clear console.
+        // 2. Clear console and assembly output
         tab.consoleTextPane.setText( "" );
+        tab.assemblySourceCode.setText( "" );
 
         // 3. Delete stale build artefacts so a failed build can never run old code.
         for ( String ext : new String[]{ "asm", "obj", "dis" } ) {
@@ -788,18 +801,39 @@ public class MainWindow extends javax.swing.JFrame {
         System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDERR_COLOR ), true ) );
 
         // 6. Compile.
-        compile( tab );
+        if ( !compile( tab ) ) {
+            System.err.println( "Compilation error - stopping pipeline!" );
+            System.setOut( origOut );
+            System.setErr( origErr );
+            return;
+        }
 
         // 7. Assemble - only if the compiler produced an .asm file.
         File asmFile = new File( String.format( "%s/%s.asm", fi.parentDirPath, fi.fileNameWithoutExt ) );
         if ( asmFile.exists() ) {
-            assemble( tab );
+            if ( !assemble( tab ) ) {
+                System.err.println( "Assembly error - stopping pipeline!" );
+                System.setOut( origOut );
+                System.setErr( origErr );
+                return;
+            }
+            try {
+                loadSourceCode( asmFile, tab.assemblySourceCode );
+            } catch ( IOException exc ) {
+                showErrorMessage( exc );
+                System.setOut( origOut );
+                System.setErr( origErr );
+                return;
+            }
         } else {
             appendToConsole(
                 tab.consoleTextPane,
                 "\n[Build stopped: no assembly file produced - fix the compilation errors above.]\n",
                 CONSOLE_STDERR_COLOR
             );
+            System.setOut( origOut );
+            System.setErr( origErr );
+            return;
         }
 
         // ---- Compile-only path: restore streams and return. ----

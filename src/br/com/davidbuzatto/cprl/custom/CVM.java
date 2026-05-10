@@ -17,7 +17,7 @@ import java.util.Scanner;
 /**
  * Adapted from edu.citadel.cvm.CVM
  * Needed to solve Windows handler issues.
- * 
+ *
  * This class implements a virtual machine for the programming language CPRL. It
  * interprets instructions for a hypothetical CPRL computer.
  */

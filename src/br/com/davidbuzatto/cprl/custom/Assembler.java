@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * Adapted from edu.citadel.cvm.assembler.Assembler
  * Needed to solve Windows handler issues.
- * 
+ *
  * Assembler for the CPRL Virtual Machine.
  */
 public class Assembler {
@@ -92,7 +92,7 @@ public class Assembler {
      * @throws IOException if there are problems reading the source file or
      * writing to the target file.
      */
-    public void assemble() throws IOException {
+    public boolean assemble() throws IOException {
         FileReader reader = new FileReader( sourceFile, StandardCharsets.UTF_8 );
         Source source = new Source( reader );
         Scanner scanner = new Scanner( source );
@@ -149,9 +149,11 @@ public class Assembler {
 
         if ( errorHandler.errorsExist() ) {
             errorHandler.printMessage( "Errors detected in " + sourceFile.getName()
-                    + " -- assembly terminated. ***" );
+                + " -- assembly terminated. ***" );
+            return false;
         } else {
             printProgressMessage( "Assembly complete." );
+            return true;
         }
     }
 
