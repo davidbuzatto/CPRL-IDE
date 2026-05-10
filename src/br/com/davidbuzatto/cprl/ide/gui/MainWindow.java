@@ -539,10 +539,17 @@ public class MainWindow extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(
             this,
             """
-            This is the CPRL IDE, a simple tool do develop programs using CPRL.
+            CPRL IDE - %s
 
-            Developed by Prof. Dr. David Buzatto""",
-            "About...",
+            A didactic tool for writing, compiling, and running programs
+            in the CPRL programming language.
+
+            CPRL was designed by John I. Moore, Jr. and is described in the book
+            "Compiler Design Using Java®: An Object-Oriented Approach"
+            (2nd ed.), available at https://github.com/SoftMoore
+
+            Developed by Prof. Dr. David Buzatto""".formatted( VERSION ),
+            "About CPRL IDE",
             JOptionPane.INFORMATION_MESSAGE
         );
     }//GEN-LAST:event_menuItemAboutActionPerformed
