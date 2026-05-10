@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Adapted from edu.citadel.cvm.assembler.Assembler
- * Needed to solve Windows handler issues.
+ * Needed to solve Windows file handler issues.
  *
  * Assembler for the CPRL Virtual Machine.
  */
@@ -144,10 +144,14 @@ public class Assembler {
             // generate code
             if ( !errorHandler.errorsExist() ) {
                 printProgressMessage( "Generating code..." );
-                AST.setOutputStream( getTargetOutputStream( sourceFile ) );
 
-                // no error recovery from errors detected during code generation
-                prog.emit();
+                // Use try-with-resources so the .obj OutputStream is always closed
+                // after emit(), releasing the file handle on Windows.
+                try ( OutputStream targetStream = getTargetOutputStream( sourceFile ) ) {
+                    AST.setOutputStream( targetStream );
+                    // no error recovery from errors detected during code generation
+                    prog.emit();
+                }
             }
 
             if ( errorHandler.errorsExist() ) {

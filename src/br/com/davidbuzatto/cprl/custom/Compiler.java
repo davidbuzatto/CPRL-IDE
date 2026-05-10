@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Adapted from edu.citadel.compiler.Compiler
- * Needed to solve Windows handler issues.
+ * Needed to solve Windows file handler issues.
  *
  * Compiler for the CPRL programming language.
  */
@@ -68,12 +68,17 @@ public class Compiler {
             if ( !errorHandler.errorsExist() ) {
                 printProgressMessage( "Generating code..." );
 
-                // no error recovery from errors detected during code generation
-                try {
-                    AST.setPrintWriter( getTargetPrintWriter( sourceFile ) );
-                    program.emit();
-                } catch ( CodeGenException ex ) {
-                    errorHandler.reportError( ex );
+                // Use try-with-resources so the .asm PrintWriter (and its underlying
+                // FileWriter) is always closed after emit(), releasing the file handle
+                // on Windows.
+                try ( PrintWriter writer = getTargetPrintWriter( sourceFile ) ) {
+                    AST.setPrintWriter( writer );
+                    // no error recovery from errors detected during code generation
+                    try {
+                        program.emit();
+                    } catch ( CodeGenException ex ) {
+                        errorHandler.reportError( ex );
+                    }
                 }
             }
 

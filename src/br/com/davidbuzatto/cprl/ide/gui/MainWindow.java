@@ -191,9 +191,10 @@ public class MainWindow extends javax.swing.JFrame {
     // Fields
     // -------------------------------------------------------------------------
 
-    private static final boolean LOAD_TEST_FILES = true;
+    private static final boolean LOAD_TEST_FILES = false;
     private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
+    private static final String VERSION = "v1.0.1";
     public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
@@ -214,6 +215,8 @@ public class MainWindow extends javax.swing.JFrame {
     public MainWindow() {
 
         initComponents();
+        setTitle( getTitle() + " - " + VERSION );
+        
         initKeyboardShortcuts();
         setIconImage( new ImageIcon( 
             getClass().getResource( 

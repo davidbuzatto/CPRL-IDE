@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Adapted from edu.citadel.cvm.Disassembler.
- * Needed to solve Windows handler issues.
+ * Needed to solve Windows file handler issues.
  *
  * Translates CVM machine code into CVM assembly language.
  */
