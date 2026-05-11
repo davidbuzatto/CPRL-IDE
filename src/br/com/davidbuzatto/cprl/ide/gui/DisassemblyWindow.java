@@ -2,6 +2,7 @@ package br.com.davidbuzatto.cprl.ide.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
 import javax.swing.ImageIcon;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rtextarea.RTextScrollPane;
@@ -15,7 +16,7 @@ public class DisassemblyWindow extends javax.swing.JFrame {
     
     private RSyntaxTextArea assemblySourceCode;
     
-    public DisassemblyWindow( String title ) {
+    public DisassemblyWindow( String title, Font font ) {
         
         initComponents();
         setTitle( title );
@@ -26,7 +27,7 @@ public class DisassemblyWindow extends javax.swing.JFrame {
         assemblySourceCode.setBackground( new Color( 0x3F3F3F, false ) );
         assemblySourceCode.setCurrentLineHighlightColor( Color.BLACK );
         assemblySourceCode.setSelectionColor( Color.BLACK );
-        assemblySourceCode.setFont( MainWindow.DEFAULT_FONT );
+        assemblySourceCode.setFont( font );
         assemblySourceCode.setAntiAliasingEnabled( true );
         assemblySourceCode.setAutoIndentEnabled( false );
         assemblySourceCode.setMatchedBracketBGColor( Color.PINK.darker() );
@@ -34,7 +35,7 @@ public class DisassemblyWindow extends javax.swing.JFrame {
         assemblySourceCode.setTabSize( 4 );
         assemblySourceCode.setSyntaxEditingStyle( "text/cprl" );
         assemblySourceCode.setEditable( false );
-        MainWindow.applyColorScheme( assemblySourceCode );
+        MainWindow.applyColorScheme( assemblySourceCode, font );
         
         RTextScrollPane assemblyScroll = new RTextScrollPane( assemblySourceCode );
         add( assemblyScroll, BorderLayout.CENTER );
@@ -51,7 +52,7 @@ public class DisassemblyWindow extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
-        setSize(new java.awt.Dimension(466, 608));
+        setSize(new java.awt.Dimension(550, 600));
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 

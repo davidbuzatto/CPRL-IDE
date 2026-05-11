@@ -177,7 +177,7 @@ public class MainWindow extends javax.swing.JFrame {
     private static record EditorTab(
         RSyntaxTextArea sourceCodeArea,
         JTextPane consoleTextPane,
-        RSyntaxTextArea assemblySourceCode,
+        RSyntaxTextArea assemblySourceCodeArea,
         JSplitPane horizontalSplit,
         JSplitPane verticalSplit,
         AtomicReference<SourceFileInfo> fileInfoRef,
@@ -195,8 +195,8 @@ public class MainWindow extends javax.swing.JFrame {
     private static final boolean LOAD_TEST_FILES = false;
     private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
-    public static final String VERSION = "v1.0.1";
-    public static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
+    public static final String VERSION = "v1.0.2";
+    private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
     private Map<JComponent, EditorTab> editorTabs;
@@ -326,6 +326,28 @@ public class MainWindow extends javax.swing.JFrame {
                 btnDisassembly.doClick();
             }
         } );
+        
+        // Ctrl+Equals - Increase editors font
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_EQUALS, KeyEvent.CTRL_DOWN_MASK ), "increaseFont" );
+        actionMap.put( "increaseFont", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                if ( activeTab != null ) {
+                    increaseTextAreaFonts( activeTab );
+                }
+            }
+        });
+        
+        // Ctrl+Minus - Decrease editors font
+        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_MINUS, KeyEvent.CTRL_DOWN_MASK ), "decreaseFont" );
+        actionMap.put( "decreaseFont", new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                if ( activeTab != null ) {
+                    decreaseTextAreaFonts( activeTab );
+                }
+            }
+        });
 
     }
 
@@ -822,7 +844,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         // 2. Clear console and assembly output
         tab.consoleTextPane.setText( "" );
-        tab.assemblySourceCode.setText( "" );
+        tab.assemblySourceCodeArea.setText( "" );
 
         // 3. Delete stale build artefacts so a failed build can never run old code.
         for ( String ext : new String[]{ "asm", "obj", "dis" } ) {
@@ -870,7 +892,7 @@ public class MainWindow extends javax.swing.JFrame {
                 return;
             }
             try {
-                loadSourceCode( asmFile, tab.assemblySourceCode );
+                loadSourceCode(asmFile, tab.assemblySourceCodeArea );
             } catch ( IOException exc ) {
                 showErrorMessage( exc );
                 System.setOut( origOut );
@@ -1030,7 +1052,8 @@ public class MainWindow extends javax.swing.JFrame {
 
             Disassembler.disassemble( objFile, disFile );
             DisassemblyWindow dw = new DisassemblyWindow(
-                String.format( "Disassembled code from %s to %s", objFile.getName(), disFile.getName() )
+                String.format( "Disassembled code from %s to %s", objFile.getName(), disFile.getName() ),
+                activeTab.assemblySourceCodeArea.getFont()
             );
             loadSourceCode( disFile, dw.getAssemblySourceCode() );
 
@@ -1075,7 +1098,7 @@ public class MainWindow extends javax.swing.JFrame {
         sourceCodeArea.setTabsEmulated( true );
         sourceCodeArea.setTabSize( 4 );
         sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
-        applyColorScheme( sourceCodeArea );
+        applyColorScheme( sourceCodeArea, DEFAULT_FONT );
 
         RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
 
@@ -1143,7 +1166,7 @@ public class MainWindow extends javax.swing.JFrame {
         assemblySourceCode.setTabSize( 4 );
         assemblySourceCode.setSyntaxEditingStyle( "text/cprl" );
         assemblySourceCode.setEditable( false );
-        applyColorScheme( assemblySourceCode );
+        applyColorScheme( assemblySourceCode, DEFAULT_FONT );
 
         RTextScrollPane assemblyScroll = new RTextScrollPane( assemblySourceCode );
 
@@ -1400,10 +1423,10 @@ public class MainWindow extends javax.swing.JFrame {
      *
      * @param sourceCodeArea the text area to style
      */
-    public static void applyColorScheme( RSyntaxTextArea sourceCodeArea ) {
+    public static void applyColorScheme( RSyntaxTextArea sourceCodeArea, Font font ) {
 
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
-        Font plain = DEFAULT_FONT;
+        Font plain = font;
 
         scheme.getStyle( Token.RESERVED_WORD ).font = plain;
         scheme.getStyle( Token.COMMENT_EOL ).font = plain;
@@ -1447,6 +1470,45 @@ public class MainWindow extends javax.swing.JFrame {
             // BadLocationException should never occur when appending to the end.
         }
     }
+    
+    /**
+     * Increases all text areas font size by 1.
+     * 
+     * @param tab The tab that contains the text areas.
+     */
+    private static void increaseTextAreaFonts( EditorTab tab ) {
+        
+        // all textareas share the same font
+        Font fSource = tab.sourceCodeArea.getFont();
+        float newSize = fSource.getSize() + 1;
+        
+        tab.sourceCodeArea.setFont( fSource.deriveFont( newSize ) );
+        tab.assemblySourceCodeArea.setFont( fSource.deriveFont( newSize ) );
+        tab.consoleTextPane.setFont( fSource.deriveFont( newSize ) );
+        
+    }
+    
+    /**
+     * Decreases all text areas font size by 1.
+     * 
+     * @param tab The tab that contains the text areas.
+     */
+    private static void decreaseTextAreaFonts( EditorTab tab ) {
+        
+        // all textareas share the same font
+        Font fSource = tab.sourceCodeArea.getFont();
+        float newSize = fSource.getSize() - 1;
+        
+        if ( newSize < 1 ) {
+            newSize = 1;
+        }
+        
+        tab.sourceCodeArea.setFont( fSource.deriveFont( newSize ) );
+        tab.assemblySourceCodeArea.setFont( fSource.deriveFont( newSize ) );
+        tab.consoleTextPane.setFont( fSource.deriveFont( newSize ) );
+        
+    }
+    
 
     /**
      * Shows a modal error dialog with the message from {@code exc}.

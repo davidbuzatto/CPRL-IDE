@@ -46,6 +46,7 @@ public class Compiler {
         
         ErrorHandler errorHandler = ErrorHandler.getInstance();
         errorHandler.resetErrorCount();
+        AST.resetCurrentLabelNum();
         
         try ( FileReader reader = new FileReader( sourceFile, StandardCharsets.UTF_8 ) ) {
             
