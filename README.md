@@ -30,6 +30,8 @@ CPRL is a small, Pascal-like programming language designed for educational purpo
 | `Shift+F5` | Compile the active file |
 | `Shift+F6` | Compile and run the active file |
 | `Shift+F7` | Disassembly the active file |
+| `Ctrl+=` | Increase text areas font size |
+| `Ctrl+-` | Decrease text areas font size |
 
 ---
 
