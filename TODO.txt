@@ -1,1 +1,1 @@
-There are some bugs related to Windows file handlers.
+Adjust new files names when saving and saving as.
