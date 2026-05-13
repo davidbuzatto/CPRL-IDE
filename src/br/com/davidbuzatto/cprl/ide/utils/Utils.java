@@ -5,8 +5,10 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.SplashScreen;
+import java.util.Arrays;
 
 /**
  * Utility methods.
@@ -48,6 +50,20 @@ public class Utils {
             
         }
         
+    }
+    
+    public static boolean isFontInstalled( String fontName ) {
+        String[] availableFonts = GraphicsEnvironment
+            .getLocalGraphicsEnvironment()
+            .getAvailableFontFamilyNames();
+        return Arrays.asList( availableFonts ).contains( fontName );
+    }
+    
+    public static Font getFontOrDefault( String fontName, int style, int size ) {
+        if ( isFontInstalled( fontName ) ) {
+            return new Font( fontName, style, size );
+        }
+        return new Font( Font.MONOSPACED, style, size );
     }
     
 }

@@ -37,8 +37,10 @@ public class DisassemblyWindow extends javax.swing.JFrame {
         assemblySourceCode.setEditable( false );
         MainWindow.applyColorScheme( assemblySourceCode, font );
         
-        RTextScrollPane assemblyScroll = new RTextScrollPane( assemblySourceCode );
-        add( assemblyScroll, BorderLayout.CENTER );
+        RTextScrollPane assemblySourceCodeSP = new RTextScrollPane( assemblySourceCode );
+        assemblySourceCodeSP.getGutter().setLineNumberFont( font );
+        
+        add( assemblySourceCodeSP, BorderLayout.CENTER );
         
     }
 

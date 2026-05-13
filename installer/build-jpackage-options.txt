@@ -1,7 +1,7 @@
 --input ../dist/
 --name CPRL-IDE
 --main-jar CPRL-IDE.jar
---app-version 1.0.2
+--app-version 1.0.3
 --vendor 'Prof. Dr. David Buzatto'
 --description 'CPRL IDE is didactic tool for writing, compiling, and running programs in the CPRL programming language.'
 --icon cprl-ide.ico

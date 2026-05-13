@@ -69,6 +69,10 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class MainWindow extends javax.swing.JFrame {
 
+    public static final String VERSION = "v1.0.3";
+    private static final boolean LOAD_TEST_FILES = false;
+    private static final boolean DEBUG_ARTEFACTS_DELETION = false;
+    
     // -------------------------------------------------------------------------
     // Colors used in the internal console
     // -------------------------------------------------------------------------
@@ -176,8 +180,10 @@ public class MainWindow extends javax.swing.JFrame {
      */
     private static record EditorTab(
         RSyntaxTextArea sourceCodeArea,
+        RTextScrollPane sourceCodeAreaSP,
         JTextPane consoleTextPane,
         RSyntaxTextArea assemblySourceCodeArea,
+        RTextScrollPane assemblySourceCodeAreaSP,
         JSplitPane horizontalSplit,
         JSplitPane verticalSplit,
         AtomicReference<SourceFileInfo> fileInfoRef,
@@ -191,12 +197,8 @@ public class MainWindow extends javax.swing.JFrame {
     // -------------------------------------------------------------------------
     // Fields
     // -------------------------------------------------------------------------
-
-    private static final boolean LOAD_TEST_FILES = false;
-    private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
-    public static final String VERSION = "v1.0.2";
-    private static final Font DEFAULT_FONT = new Font( "Consolas", Font.PLAIN, 20 );
+    private static final Font DEFAULT_FONT = Utils.getFontOrDefault( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
     private Map<JComponent, EditorTab> editorTabs;
@@ -224,7 +226,7 @@ public class MainWindow extends javax.swing.JFrame {
                 "/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png"
             )
         ).getImage() );
-
+        
         ATMF = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
         ATMF.putMapping( "text/cprl", "br.com.davidbuzatto.cprl.ide.gui.CPRLTokenMaker" );
 
@@ -680,7 +682,8 @@ public class MainWindow extends javax.swing.JFrame {
      * @param tab the editor tab to save
      * 
      * @return {@code true} if the user confirmed and the write succeeded;
-     *         {@code false} if the user cancelled the dialog
+     *         {@code false} if the user cancelled the dialog or chose to not
+     *                       overwrite an existing file.
      */
     private boolean saveFileAs( EditorTab tab ) {
 
@@ -696,7 +699,20 @@ public class MainWindow extends javax.swing.JFrame {
         if ( !file.getName().endsWith( ".cprl" ) ) {
             file = new File( file.getAbsolutePath() + ".cprl" );
         }
-
+        
+        if ( file.exists() ) {
+            int choice = JOptionPane.showConfirmDialog(
+                this,
+                "File \"" + file.getName() + "\" already exists. Overwrite it?",
+                "Confirm Overwrite",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            if ( choice == JOptionPane.NO_OPTION ) {
+                return false;
+            }
+        }
+        
         SourceFileInfo oldInfo = tab.fileInfoRef.get();
         if ( oldInfo != null ) {
             openedFilePaths.remove( oldInfo.file.getAbsolutePath() );
@@ -707,6 +723,14 @@ public class MainWindow extends javax.swing.JFrame {
         openedFilePaths.add( file.getAbsolutePath() );
 
         writeFile( tab );
+
+        // updates all opened files name in their tabs
+        for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
+            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+            EditorTab t = editorTabs.get( c );
+            t.titleLabel.setText( t.fileInfoRef.get().file.getName() );
+        }
+        
         return true;
 
     }
@@ -1100,7 +1124,8 @@ public class MainWindow extends javax.swing.JFrame {
         sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
         applyColorScheme( sourceCodeArea, DEFAULT_FONT );
 
-        RTextScrollPane sp = new RTextScrollPane( sourceCodeArea );
+        RTextScrollPane sourceCodeAreaSP = new RTextScrollPane( sourceCodeArea );
+        sourceCodeAreaSP.getGutter().setLineNumberFont( DEFAULT_FONT );
 
         // --- Console: output pane ---
         JTextPane consoleTextPane = new JTextPane();
@@ -1168,16 +1193,17 @@ public class MainWindow extends javax.swing.JFrame {
         assemblySourceCode.setEditable( false );
         applyColorScheme( assemblySourceCode, DEFAULT_FONT );
 
-        RTextScrollPane assemblyScroll = new RTextScrollPane( assemblySourceCode );
+        RTextScrollPane assemblySourceCodeSP = new RTextScrollPane( assemblySourceCode );
+        assemblySourceCodeSP.getGutter().setLineNumberFont( DEFAULT_FONT );
 
         // --- Split panes ---
         JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
-        verticalSplit.setTopComponent( sp );
+        verticalSplit.setTopComponent( sourceCodeAreaSP );
         verticalSplit.setBottomComponent( consolePanel );
 
         JSplitPane horizontalSplit = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT );
         horizontalSplit.setLeftComponent( verticalSplit );
-        horizontalSplit.setRightComponent( assemblyScroll );
+        horizontalSplit.setRightComponent( assemblySourceCodeSP );
 
         JPanel container = new JPanel( new BorderLayout() );
         container.add( horizontalSplit, BorderLayout.CENTER );
@@ -1187,8 +1213,10 @@ public class MainWindow extends javax.swing.JFrame {
 
         EditorTab tab = new EditorTab(
             sourceCodeArea,
+            sourceCodeAreaSP,
             consoleTextPane,
             assemblySourceCode,
+            assemblySourceCodeSP,
             horizontalSplit,
             verticalSplit,
             new AtomicReference<>( fileInfo ),
@@ -1426,13 +1454,12 @@ public class MainWindow extends javax.swing.JFrame {
     public static void applyColorScheme( RSyntaxTextArea sourceCodeArea, Font font ) {
 
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
-        Font plain = font;
 
-        scheme.getStyle( Token.RESERVED_WORD ).font = plain;
-        scheme.getStyle( Token.COMMENT_EOL ).font = plain;
-        scheme.getStyle( Token.IDENTIFIER ).font = plain;
-        scheme.getStyle( Token.DATA_TYPE ).font = plain;
-        scheme.getStyle( Token.OPERATOR ).font = plain;
+        scheme.getStyle( Token.RESERVED_WORD ).font = font;
+        scheme.getStyle( Token.COMMENT_EOL ).font = font;
+        scheme.getStyle( Token.IDENTIFIER ).font = font;
+        scheme.getStyle( Token.DATA_TYPE ).font = font;
+        scheme.getStyle( Token.OPERATOR ).font = font;
 
         scheme.getStyle( Token.COMMENT_EOL ).foreground                 = new Color( 0x808080, false );
         scheme.getStyle( Token.IDENTIFIER ).foreground                  = new Color( 0xFFFFFF, false );
@@ -1478,13 +1505,16 @@ public class MainWindow extends javax.swing.JFrame {
      */
     private static void increaseTextAreaFonts( EditorTab tab ) {
         
-        // all textareas share the same font
-        Font fSource = tab.sourceCodeArea.getFont();
-        float newSize = fSource.getSize() + 1;
+        // all textareas share the same font, even the gutter line number font
+        Font font = tab.sourceCodeArea.getFont();
+        float newSize = font.getSize() + 1;
         
-        tab.sourceCodeArea.setFont( fSource.deriveFont( newSize ) );
-        tab.assemblySourceCodeArea.setFont( fSource.deriveFont( newSize ) );
-        tab.consoleTextPane.setFont( fSource.deriveFont( newSize ) );
+        tab.sourceCodeArea.setFont( font.deriveFont( newSize ) );
+        tab.assemblySourceCodeArea.setFont( font.deriveFont( newSize ) );
+        tab.consoleTextPane.setFont( font.deriveFont( newSize ) );
+        
+        tab.sourceCodeAreaSP.getGutter().setLineNumberFont( font.deriveFont( newSize ) );
+        tab.assemblySourceCodeAreaSP.getGutter().setLineNumberFont( font.deriveFont( newSize ) );
         
     }
     
@@ -1495,17 +1525,20 @@ public class MainWindow extends javax.swing.JFrame {
      */
     private static void decreaseTextAreaFonts( EditorTab tab ) {
         
-        // all textareas share the same font
-        Font fSource = tab.sourceCodeArea.getFont();
-        float newSize = fSource.getSize() - 1;
+        // all textareas share the same font, even the gutter line number font
+        Font font = tab.sourceCodeArea.getFont();
+        float newSize = font.getSize() - 1;
         
         if ( newSize < 1 ) {
             newSize = 1;
         }
         
-        tab.sourceCodeArea.setFont( fSource.deriveFont( newSize ) );
-        tab.assemblySourceCodeArea.setFont( fSource.deriveFont( newSize ) );
-        tab.consoleTextPane.setFont( fSource.deriveFont( newSize ) );
+        tab.sourceCodeArea.setFont( font.deriveFont( newSize ) );
+        tab.assemblySourceCodeArea.setFont( font.deriveFont( newSize ) );
+        tab.consoleTextPane.setFont( font.deriveFont( newSize ) );
+        
+        tab.sourceCodeAreaSP.getGutter().setLineNumberFont( font.deriveFont( newSize ) );
+        tab.assemblySourceCodeAreaSP.getGutter().setLineNumberFont( font.deriveFont( newSize ) );
         
     }
     
