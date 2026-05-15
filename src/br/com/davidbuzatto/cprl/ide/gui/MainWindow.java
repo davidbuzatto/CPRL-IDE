@@ -16,6 +16,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,6 +27,7 @@ import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -197,7 +199,7 @@ public class MainWindow extends javax.swing.JFrame {
     // -------------------------------------------------------------------------
     // Fields
     // -------------------------------------------------------------------------
-    
+
     private static final Font DEFAULT_FONT = Utils.getFontOrDefault( "Consolas", Font.PLAIN, 20 );
     private final AbstractTokenMakerFactory ATMF;
 
@@ -206,6 +208,23 @@ public class MainWindow extends javax.swing.JFrame {
     private Set<String> openedFilePaths;
     private boolean skipInitialTabChange;
     private int untitledCounter;
+
+    // -------------------------------------------------------------------------
+    // Preferences
+    // -------------------------------------------------------------------------
+
+    /** Directory that contains the preferences file ({@code ~/.cprl-ide/}). */
+    private static final File PREFS_DIR =
+        new File( System.getProperty( "user.home" ), ".cprl-ide" );
+
+    /** Preferences file path ({@code ~/.cprl-ide/preferences.properties}). */
+    private static final File PREFS_FILE = new File( PREFS_DIR, "preferences.properties" );
+
+    private static final String PREF_LAST_OPEN_DIR   = "lastOpenDir";
+    private static final String PREF_LAST_SAVE_AS_DIR = "lastSaveAsDir";
+
+    /** Persistent user preferences loaded from / saved to {@link #PREFS_FILE}. */
+    private Properties prefs;
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -233,6 +252,7 @@ public class MainWindow extends javax.swing.JFrame {
         openedFilePaths = new HashSet<>();
         skipInitialTabChange = true;
         untitledCounter = 0;
+        prefs = loadPrefs();
         
         if ( LOAD_TEST_FILES ) {
             try {
@@ -526,20 +546,25 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void btnOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenActionPerformed
 
-        JFileChooser jfc = new JFileChooser( "./" );
+        JFileChooser jfc = new JFileChooser( getPrefDir( PREF_LAST_OPEN_DIR ) );
         jfc.setDialogTitle( "Open" );
         jfc.setMultiSelectionEnabled( true );
         jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
 
-        jfc.showOpenDialog( this );
+        if ( jfc.showOpenDialog( this ) != JFileChooser.APPROVE_OPTION ) {
+            return;
+        }
 
-        for ( File selectedFile : jfc.getSelectedFiles() ) {
-            if ( selectedFile != null ) {
-                try {
-                    openFile( selectedFile );
-                } catch ( IOException exc ) {
-                    showErrorMessage( exc );
-                }
+        File[] selectedFiles = jfc.getSelectedFiles();
+        if ( selectedFiles.length > 0 ) {
+            setPrefDir( PREF_LAST_OPEN_DIR, selectedFiles[0].getParentFile() );
+        }
+
+        for ( File selectedFile : selectedFiles ) {
+            try {
+                openFile( selectedFile );
+            } catch ( IOException exc ) {
+                showErrorMessage( exc );
             }
         }
 
@@ -699,7 +724,7 @@ public class MainWindow extends javax.swing.JFrame {
      */
     private boolean saveFileAs( EditorTab tab ) {
 
-        JFileChooser jfc = new JFileChooser( "./" );
+        JFileChooser jfc = new JFileChooser( getPrefDir( PREF_LAST_SAVE_AS_DIR ) );
         jfc.setDialogTitle( "Save As" );
         jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
 
@@ -708,6 +733,7 @@ public class MainWindow extends javax.swing.JFrame {
         }
 
         File file = jfc.getSelectedFile();
+        setPrefDir( PREF_LAST_SAVE_AS_DIR, file.getParentFile() );
         if ( !file.getName().endsWith( ".cprl" ) ) {
             file = new File( file.getAbsolutePath() + ".cprl" );
         }
@@ -1528,6 +1554,80 @@ public class MainWindow extends javax.swing.JFrame {
         btnCompile.setEnabled( !running );
         btnCompileAndRun.setEnabled( !running );
         btnDisassembly.setEnabled( !running );
+    }
+
+    // -------------------------------------------------------------------------
+    // Preferences
+    // -------------------------------------------------------------------------
+
+    /**
+     * Loads user preferences from {@link #PREFS_FILE}.  Returns an empty
+     * {@link Properties} object if the file does not exist or cannot be read;
+     * errors are silently swallowed so a missing config never prevents startup.
+     *
+     * @return the loaded (possibly empty) {@link Properties} instance
+     */
+    private Properties loadPrefs() {
+        Properties p = new Properties();
+        if ( PREFS_FILE.isFile() ) {
+            try ( FileInputStream in = new FileInputStream( PREFS_FILE ) ) {
+                p.load( in );
+            } catch ( IOException ignored ) {
+                // Non-fatal: proceed with defaults.
+            }
+        }
+        return p;
+    }
+
+    /**
+     * Persists the current {@link #prefs} to {@link #PREFS_FILE}.
+     * Creates the containing directory if it does not exist yet.
+     * Errors are silently swallowed — a failed save is not worth crashing for.
+     */
+    private void savePrefs() {
+        try {
+            PREFS_DIR.mkdirs();
+            try ( FileOutputStream out = new FileOutputStream( PREFS_FILE ) ) {
+                prefs.store( out, "CPRL IDE preferences" );
+            }
+        } catch ( IOException ignored ) {
+            // Non-fatal: preferences simply won't be persisted this run.
+        }
+    }
+
+    /**
+     * Returns the directory stored under {@code key} as a {@link File}, falling
+     * back to the current working directory when the key is absent or the stored
+     * path is no longer a valid directory.
+     *
+     * @param key the preference key (one of the {@code PREF_LAST_*} constants)
+     *
+     * @return the directory to use as the initial location for a file chooser
+     */
+    private File getPrefDir( String key ) {
+        String path = prefs.getProperty( key );
+        if ( path != null ) {
+            File dir = new File( path );
+            if ( dir.isDirectory() ) {
+                return dir;
+            }
+        }
+        return new File( "./" );
+    }
+
+    /**
+     * Stores the absolute path of {@code dir} under {@code key} and immediately
+     * persists the preferences file.
+     *
+     * @param key the preference key (one of the {@code PREF_LAST_*} constants)
+     * @param dir the directory to remember; {@code null} is silently ignored
+     */
+    private void setPrefDir( String key, File dir ) {
+        if ( dir == null ) {
+            return;
+        }
+        prefs.setProperty( key, dir.getAbsolutePath() );
+        savePrefs();
     }
 
     // -------------------------------------------------------------------------
