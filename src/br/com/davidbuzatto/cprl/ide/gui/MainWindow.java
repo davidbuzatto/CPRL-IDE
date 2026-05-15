@@ -675,15 +675,26 @@ public class MainWindow extends javax.swing.JFrame {
 
     /**
      * Opens a CPRL source file in a new editor tab.  If the file is already
-     * open, the method returns without creating a duplicate tab.
+     * open, its existing tab is focused instead of creating a duplicate.
      *
      * @param file the source file to open
-     * 
+     *
      * @throws IOException if the file cannot be read
      */
     private void openFile( File file ) throws IOException {
 
         if ( openedFilePaths.contains( file.getAbsolutePath() ) ) {
+            // File is already open: focus its tab instead of duplicating it.
+            String targetPath = file.getAbsolutePath();
+            for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
+                JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+                EditorTab t = editorTabs.get( c );
+                SourceFileInfo fi = t.fileInfoRef.get();
+                if ( fi != null && fi.file.getAbsolutePath().equals( targetPath ) ) {
+                    tabbedPaneSourceCode.setSelectedIndex( i );
+                    break;
+                }
+            }
             return;
         }
 
