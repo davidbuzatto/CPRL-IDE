@@ -1,2 +1,0 @@
-When saving:
-    Check the opened files set to check the opened tabs.
