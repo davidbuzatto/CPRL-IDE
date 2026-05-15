@@ -70,7 +70,7 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 public class MainWindow extends javax.swing.JFrame {
 
     public static final String VERSION = "v1.0.3";
-    private static final boolean LOAD_TEST_FILES = false;
+    private static final boolean LOAD_TEST_FILES = true;
     private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
     // -------------------------------------------------------------------------
@@ -699,7 +699,7 @@ public class MainWindow extends javax.swing.JFrame {
         if ( !file.getName().endsWith( ".cprl" ) ) {
             file = new File( file.getAbsolutePath() + ".cprl" );
         }
-        
+
         if ( file.exists() ) {
             int choice = JOptionPane.showConfirmDialog(
                 this,
@@ -712,7 +712,24 @@ public class MainWindow extends javax.swing.JFrame {
                 return false;
             }
         }
-        
+
+        // Check whether the target file is already open in a different tab.
+        // If so, that tab will be closed after the write — the user already
+        // confirmed the overwrite, so its previous content is superseded.
+        String targetPath = file.getAbsolutePath();
+        EditorTab duplicateTab = null;
+        int duplicateTabIndex = -1;
+        for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
+            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+            EditorTab t = editorTabs.get( c );
+            SourceFileInfo fi = t.fileInfoRef.get();
+            if ( t != tab && fi != null && fi.file.getAbsolutePath().equals( targetPath ) ) {
+                duplicateTab = t;
+                duplicateTabIndex = i;
+                break;
+            }
+        }
+
         SourceFileInfo oldInfo = tab.fileInfoRef.get();
         if ( oldInfo != null ) {
             openedFilePaths.remove( oldInfo.file.getAbsolutePath() );
@@ -720,17 +737,25 @@ public class MainWindow extends javax.swing.JFrame {
 
         SourceFileInfo newInfo = getSourceFileInfo( file );
         tab.fileInfoRef.set( newInfo );
-        openedFilePaths.add( file.getAbsolutePath() );
+        openedFilePaths.add( targetPath );
 
-        writeFile( tab );
+        // Update the current tab's label and tooltip.
+        tab.titleLabel.setText( file.getName() );
+        updateTabTooltip( tab );
 
-        // updates all opened files name in their tabs
-        for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
-            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            EditorTab t = editorTabs.get( c );
-            t.titleLabel.setText( t.fileInfoRef.get().file.getName() );
+        if ( !writeFile( tab ) ) {
+            return false;
         }
-        
+
+        // Close the duplicate tab without a dirty-state prompt: the file was
+        // intentionally overwritten, so the current tab is now the sole owner.
+        // The path stays in openedFilePaths because the current tab still holds it.
+        if ( duplicateTab != null ) {
+            JComponent dc = (JComponent) tabbedPaneSourceCode.getComponentAt( duplicateTabIndex );
+            editorTabs.remove( dc );
+            tabbedPaneSourceCode.remove( duplicateTabIndex );
+        }
+
         return true;
 
     }
@@ -1234,6 +1259,7 @@ public class MainWindow extends javax.swing.JFrame {
             openedFilePaths.add( fileInfo.file.getAbsolutePath() );
         }
 
+        updateTabTooltip( tab );
         adjustSplitPanes( tab );
         return tab;
 
@@ -1312,7 +1338,20 @@ public class MainWindow extends javax.swing.JFrame {
         editorTabs.remove( c );
         SourceFileInfo fi = tab.fileInfoRef.get();
         if ( fi != null ) {
-            openedFilePaths.remove( fi.file.getAbsolutePath() );
+            // Only remove the path from the set if no other open tab still
+            // references the same file (can happen after a Save As overwrite).
+            String closedPath = fi.file.getAbsolutePath();
+            boolean stillOpenElsewhere = false;
+            for ( EditorTab t : editorTabs.values() ) {
+                SourceFileInfo tfi = t.fileInfoRef.get();
+                if ( tfi != null && tfi.file.getAbsolutePath().equals( closedPath ) ) {
+                    stillOpenElsewhere = true;
+                    break;
+                }
+            }
+            if ( !stillOpenElsewhere ) {
+                openedFilePaths.remove( closedPath );
+            }
         }
         tabbedPaneSourceCode.remove( index );
 
@@ -1373,12 +1412,30 @@ public class MainWindow extends javax.swing.JFrame {
      * leading {@code "* "} prefix if present.
      *
      * @param tab the editor tab whose title is needed
-     * 
+     *
      * @return the title string without any dirty-state prefix
      */
     private String tabTitle( EditorTab tab ) {
         String current = tab.titleLabel.getText();
         return current.startsWith( "* " ) ? current.substring( 2 ) : current;
+    }
+
+    /**
+     * Updates the tooltip of the tab header for {@code tab} to show the full
+     * path of the associated file.  Both the title {@link JLabel} and its
+     * parent panel receive the tooltip so that hovering anywhere over the tab
+     * header triggers the popup.  Untitled tabs (no associated file) have their
+     * tooltip cleared.
+     *
+     * @param tab the editor tab whose tooltip should be refreshed
+     */
+    private void updateTabTooltip( EditorTab tab ) {
+        SourceFileInfo fi = tab.fileInfoRef.get();
+        String tooltip = ( fi != null ) ? fi.file.getAbsolutePath() : null;
+        tab.titleLabel.setToolTipText( tooltip );
+        if ( tab.titleLabel.getParent() instanceof JComponent parent ) {
+            parent.setToolTipText( tooltip );
+        }
     }
 
     // -------------------------------------------------------------------------

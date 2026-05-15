@@ -1,3 +1,2 @@
 When saving:
-    Save as: if the file is opened and we save as to overwrite the same file, we should not open two tabs;
     Check the opened files set to check the opened tabs.
