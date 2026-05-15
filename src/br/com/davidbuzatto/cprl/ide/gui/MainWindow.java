@@ -69,7 +69,7 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class MainWindow extends javax.swing.JFrame {
 
-    public static final String VERSION = "v1.0.3";
+    public static final String VERSION = "v1.0.4";
     private static final boolean LOAD_TEST_FILES = true;
     private static final boolean DEBUG_ARTEFACTS_DELETION = false;
     
@@ -218,8 +218,6 @@ public class MainWindow extends javax.swing.JFrame {
     public MainWindow() {
 
         initComponents();
-        setTitle( getTitle() + " - " + VERSION );
-        
         initKeyboardShortcuts();
         setIconImage( new ImageIcon( 
             getClass().getResource( 
@@ -246,6 +244,12 @@ public class MainWindow extends javax.swing.JFrame {
             }
         }
         
+        // After all startup files have been loaded, lock in the correct title.
+        // Also make sure the skip-flag is cleared so the next user-initiated
+        // tab change is handled normally (relevant when no files were loaded).
+        skipInitialTabChange = false;
+        updateWindowTitle();
+
         setExtendedState( MAXIMIZED_BOTH );
 
     }
@@ -506,6 +510,14 @@ public class MainWindow extends javax.swing.JFrame {
         JComponent c = (JComponent) tabbedPaneSourceCode.getSelectedComponent();
         activeTab = editorTabs.get( c );
 
+        // Update the window title only when switching between existing tabs
+        // (activeTab != null) or when the last tab is closed (tab count == 0).
+        // When activeTab is null with tabs still present, a new tab is being
+        // built and buildEditorTab() will call updateWindowTitle() itself.
+        if ( activeTab != null || tabbedPaneSourceCode.getTabCount() == 0 ) {
+            updateWindowTitle();
+        }
+
     }//GEN-LAST:event_tabbedPaneSourceCodeStateChanged
 
     private void btnNewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNewActionPerformed
@@ -739,9 +751,10 @@ public class MainWindow extends javax.swing.JFrame {
         tab.fileInfoRef.set( newInfo );
         openedFilePaths.add( targetPath );
 
-        // Update the current tab's label and tooltip.
+        // Update the current tab's label, tooltip, and window title.
         tab.titleLabel.setText( file.getName() );
         updateTabTooltip( tab );
+        updateWindowTitle();
 
         if ( !writeFile( tab ) ) {
             return false;
@@ -1260,6 +1273,7 @@ public class MainWindow extends javax.swing.JFrame {
         }
 
         updateTabTooltip( tab );
+        updateWindowTitle();
         adjustSplitPanes( tab );
         return tab;
 
@@ -1436,6 +1450,27 @@ public class MainWindow extends javax.swing.JFrame {
         if ( tab.titleLabel.getParent() instanceof JComponent parent ) {
             parent.setToolTipText( tooltip );
         }
+    }
+
+    /**
+     * Rebuilds the main window title to reflect the file associated with the
+     * currently active tab. The format is:
+     * <pre>
+     *   CPRL IDE - &lt;version&gt;  -  &lt;filename&gt;
+     * </pre>
+     * When the active tab is untitled, the tab's plain title (e.g.
+     * {@code "Untitled-1"}) is used instead of a file name. When no tab is
+     * open, only the base title is shown.
+     */
+    private void updateWindowTitle() {
+        String base = "CPRL IDE - " + VERSION;
+        if ( activeTab == null ) {
+            setTitle( base );
+            return;
+        }
+        SourceFileInfo fi = activeTab.fileInfoRef.get();
+        String name = ( fi != null ) ? fi.file.getAbsolutePath() : tabTitle( activeTab );
+        setTitle( base + "  -  " + name );
     }
 
     // -------------------------------------------------------------------------
