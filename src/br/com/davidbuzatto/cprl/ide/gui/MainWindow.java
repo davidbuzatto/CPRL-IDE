@@ -1436,19 +1436,32 @@ public class MainWindow extends javax.swing.JFrame {
 
     /**
      * Updates the tooltip of the tab header for {@code tab} to show the full
-     * path of the associated file.  Both the title {@link JLabel} and its
-     * parent panel receive the tooltip so that hovering anywhere over the tab
-     * header triggers the popup.  Untitled tabs (no associated file) have their
-     * tooltip cleared.
+     * path of the associated file, using {@link javax.swing.JTabbedPane#setToolTipTextAt}.
+     * <p>
+     * Tooltips must <em>not</em> be set directly on the custom tab-header
+     * components (the title {@link JLabel} or its parent panel).  Doing so
+     * causes the {@link javax.swing.ToolTipManager} to register a
+     * {@code MouseListener} on those components, which makes the AWT
+     * {@code LightweightDispatcher} stop the event search there — so the
+     * {@link javax.swing.JTabbedPane}'s own listener never receives the click
+     * and tab switching breaks.  {@code BasicTabbedPaneUI} already registers
+     * the {@code ToolTipManager} on the pane itself, and
+     * {@code JTabbedPane.getToolTipText(MouseEvent)} uses
+     * {@code tabForCoordinate} to return the right text per tab.
+     * <p>
+     * Untitled tabs (no associated file) have their tooltip cleared.
      *
      * @param tab the editor tab whose tooltip should be refreshed
      */
     private void updateTabTooltip( EditorTab tab ) {
         SourceFileInfo fi = tab.fileInfoRef.get();
         String tooltip = ( fi != null ) ? fi.file.getAbsolutePath() : null;
-        tab.titleLabel.setToolTipText( tooltip );
-        if ( tab.titleLabel.getParent() instanceof JComponent parent ) {
-            parent.setToolTipText( tooltip );
+        for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
+            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+            if ( editorTabs.get( c ) == tab ) {
+                tabbedPaneSourceCode.setToolTipTextAt( i, tooltip );
+                break;
+            }
         }
     }
 
