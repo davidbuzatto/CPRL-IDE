@@ -6,6 +6,7 @@ import br.com.davidbuzatto.cprl.custom.Assembler;
 import br.com.davidbuzatto.cprl.custom.Disassembler;
 import br.com.davidbuzatto.cprl.ide.utils.Utils;
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import edu.citadel.cvm.assembler.ast.Instruction;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -220,8 +221,9 @@ public class MainWindow extends javax.swing.JFrame {
     /** Preferences file path ({@code ~/.cprl-ide/preferences.properties}). */
     private static final File PREFS_FILE = new File( PREFS_DIR, "preferences.properties" );
 
-    private static final String PREF_LAST_OPEN_DIR   = "lastOpenDir";
+    private static final String PREF_LAST_OPEN_DIR    = "lastOpenDir";
     private static final String PREF_LAST_SAVE_AS_DIR = "lastSaveAsDir";
+    private static final String PREF_CURRENT_THEME    = "currentTheme";
 
     /** Persistent user preferences loaded from / saved to {@link #PREFS_FILE}. */
     private Properties prefs;
@@ -256,9 +258,9 @@ public class MainWindow extends javax.swing.JFrame {
         
         if ( LOAD_TEST_FILES ) {
             try {
-                openFile( new File( "cprl-examples/HelloWorld.cprl" ) );
-                openFile( new File( "cprl-examples/Optimizations.cprl" ) );
-                openFile( new File( "cprl-examples/MultiplicationTable.cprl" ) );
+                openFileInEditor( new File( "cprl-examples/HelloWorld.cprl" ) );
+                openFileInEditor( new File( "cprl-examples/Optimizations.cprl" ) );
+                openFileInEditor( new File( "cprl-examples/MultiplicationTable.cprl" ) );
             } catch ( IOException exc ) {
                 showErrorMessage( exc );
             }
@@ -289,69 +291,6 @@ public class MainWindow extends javax.swing.JFrame {
 
         InputMap inputMap = getRootPane().getInputMap( JComponent.WHEN_IN_FOCUSED_WINDOW );
         ActionMap actionMap = getRootPane().getActionMap();
-
-        // Ctrl+N - Save
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_N, KeyEvent.CTRL_DOWN_MASK ), "new" );
-        actionMap.put( "new", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnNew.doClick();
-            }
-        } );
-        
-        // Ctrl+O - Open
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_O, KeyEvent.CTRL_DOWN_MASK ), "open" );
-        actionMap.put( "open", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnOpen.doClick();
-            }
-        } );
-        
-        // Ctrl+S - Save
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK ), "save" );
-        actionMap.put( "save", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnSave.doClick();
-            }
-        } );
-
-        // Ctrl+Shift+S - Save All
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK ), "saveAll" );
-        actionMap.put( "saveAll", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnSaveAll.doClick();
-            }
-        } );
-
-        // Shift+F5 - Compile
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F5, KeyEvent.SHIFT_DOWN_MASK ), "compile" );
-        actionMap.put( "compile", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnCompile.doClick();
-            }
-        } );
-        
-        // Shift+F6 - Compile and Run
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F6, KeyEvent.SHIFT_DOWN_MASK ), "compileAndRun" );
-        actionMap.put( "compileAndRun", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnCompileAndRun.doClick();
-            }
-        } );
-        
-        // Shift+F7 - Disassembly
-        inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F7, KeyEvent.SHIFT_DOWN_MASK ), "disassembly" );
-        actionMap.put( "disassembly", new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                btnDisassembly.doClick();
-            }
-        } );
         
         // Ctrl+Equals - Increase editors font
         inputMap.put( KeyStroke.getKeyStroke( KeyEvent.VK_EQUALS, KeyEvent.CTRL_DOWN_MASK ), "increaseFont" );
@@ -381,6 +320,7 @@ public class MainWindow extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        themeButtonGroup = new javax.swing.ButtonGroup();
         toolbar = new javax.swing.JToolBar();
         btnNew = new javax.swing.JButton();
         btnOpen = new javax.swing.JButton();
@@ -394,6 +334,24 @@ public class MainWindow extends javax.swing.JFrame {
         btnDisassembly = new javax.swing.JButton();
         tabbedPaneSourceCode = new javax.swing.JTabbedPane();
         menuBar = new javax.swing.JMenuBar();
+        menuFile = new javax.swing.JMenu();
+        menuItemNew = new javax.swing.JMenuItem();
+        sepMenuFile01 = new javax.swing.JPopupMenu.Separator();
+        menuItemOpen = new javax.swing.JMenuItem();
+        sepMenuFile02 = new javax.swing.JPopupMenu.Separator();
+        menuItemSave = new javax.swing.JMenuItem();
+        menuItemSaveAs = new javax.swing.JMenuItem();
+        menuItemSaveAll = new javax.swing.JMenuItem();
+        sepMenuFile03 = new javax.swing.JPopupMenu.Separator();
+        menuItemExit = new javax.swing.JMenuItem();
+        menuRun = new javax.swing.JMenu();
+        menuItemCompile = new javax.swing.JMenuItem();
+        menuItemCompileAndRun = new javax.swing.JMenuItem();
+        sepMenuRun01 = new javax.swing.JPopupMenu.Separator();
+        menuItemDisassembly = new javax.swing.JMenuItem();
+        menuThemes = new javax.swing.JMenu();
+        menuItemRadioLight = new javax.swing.JRadioButtonMenuItem();
+        menuItemRadioDark = new javax.swing.JRadioButtonMenuItem();
         menuHelp = new javax.swing.JMenu();
         menuItemAbout = new javax.swing.JMenuItem();
 
@@ -480,6 +438,101 @@ public class MainWindow extends javax.swing.JFrame {
 
         tabbedPaneSourceCode.addChangeListener(this::tabbedPaneSourceCodeStateChanged);
 
+        menuFile.setMnemonic('F');
+        menuFile.setText("File");
+
+        menuItemNew.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_N, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        menuItemNew.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/page_white_add.png"))); // NOI18N
+        menuItemNew.setMnemonic('N');
+        menuItemNew.setText("New File");
+        menuItemNew.addActionListener(this::menuItemNewActionPerformed);
+        menuFile.add(menuItemNew);
+        menuFile.add(sepMenuFile01);
+
+        menuItemOpen.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        menuItemOpen.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/folder.png"))); // NOI18N
+        menuItemOpen.setMnemonic('O');
+        menuItemOpen.setText("Open File");
+        menuItemOpen.addActionListener(this::menuItemOpenActionPerformed);
+        menuFile.add(menuItemOpen);
+        menuFile.add(sepMenuFile02);
+
+        menuItemSave.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        menuItemSave.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk.png"))); // NOI18N
+        menuItemSave.setMnemonic('S');
+        menuItemSave.setText("Save");
+        menuItemSave.addActionListener(this::menuItemSaveActionPerformed);
+        menuFile.add(menuItemSave);
+
+        menuItemSaveAs.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_add.png"))); // NOI18N
+        menuItemSaveAs.setMnemonic('v');
+        menuItemSaveAs.setText("Save As...");
+        menuItemSaveAs.addActionListener(this::menuItemSaveAsActionPerformed);
+        menuFile.add(menuItemSaveAs);
+
+        menuItemSaveAll.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        menuItemSaveAll.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/disk_multiple.png"))); // NOI18N
+        menuItemSaveAll.setMnemonic('A');
+        menuItemSaveAll.setText("Save All");
+        menuItemSaveAll.addActionListener(this::menuItemSaveAllActionPerformed);
+        menuFile.add(menuItemSaveAll);
+        menuFile.add(sepMenuFile03);
+
+        menuItemExit.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F4, java.awt.event.InputEvent.ALT_DOWN_MASK));
+        menuItemExit.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/door_out.png"))); // NOI18N
+        menuItemExit.setMnemonic('x');
+        menuItemExit.setText("Exit");
+        menuItemExit.setToolTipText("");
+        menuItemExit.addActionListener(this::menuItemExitActionPerformed);
+        menuFile.add(menuItemExit);
+
+        menuBar.add(menuFile);
+
+        menuRun.setMnemonic('R');
+        menuRun.setText("Run");
+
+        menuItemCompile.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        menuItemCompile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/cog.png"))); // NOI18N
+        menuItemCompile.setMnemonic('C');
+        menuItemCompile.setText("Compile");
+        menuItemCompile.addActionListener(this::menuItemCompileActionPerformed);
+        menuRun.add(menuItemCompile);
+
+        menuItemCompileAndRun.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F6, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        menuItemCompileAndRun.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/control_play_blue.png"))); // NOI18N
+        menuItemCompileAndRun.setMnemonic('R');
+        menuItemCompileAndRun.setText("Compile and Run");
+        menuItemCompileAndRun.addActionListener(this::menuItemCompileAndRunActionPerformed);
+        menuRun.add(menuItemCompileAndRun);
+        menuRun.add(sepMenuRun01);
+
+        menuItemDisassembly.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F7, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        menuItemDisassembly.setIcon(new javax.swing.ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/arrow_undo.png"))); // NOI18N
+        menuItemDisassembly.setMnemonic('D');
+        menuItemDisassembly.setText("Disassembly");
+        menuItemDisassembly.setToolTipText("");
+        menuItemDisassembly.addActionListener(this::menuItemDisassemblyActionPerformed);
+        menuRun.add(menuItemDisassembly);
+
+        menuBar.add(menuRun);
+
+        menuThemes.setMnemonic('T');
+        menuThemes.setText("Themes");
+
+        themeButtonGroup.add(menuItemRadioLight);
+        menuItemRadioLight.setMnemonic('L');
+        menuItemRadioLight.setText("Light");
+        menuItemRadioLight.addActionListener(this::menuItemRadioLightActionPerformed);
+        menuThemes.add(menuItemRadioLight);
+
+        themeButtonGroup.add(menuItemRadioDark);
+        menuItemRadioDark.setMnemonic('D');
+        menuItemRadioDark.setText("Dark");
+        menuItemRadioDark.addActionListener(this::menuItemRadioDarkActionPerformed);
+        menuThemes.add(menuItemRadioDark);
+
+        menuBar.add(menuThemes);
+
         menuHelp.setMnemonic('H');
         menuHelp.setText("Help");
 
@@ -545,36 +598,11 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_btnNewActionPerformed
 
     private void btnOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOpenActionPerformed
-
-        JFileChooser jfc = new JFileChooser( getPrefDir( PREF_LAST_OPEN_DIR ) );
-        jfc.setDialogTitle( "Open" );
-        jfc.setMultiSelectionEnabled( true );
-        jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
-
-        if ( jfc.showOpenDialog( this ) != JFileChooser.APPROVE_OPTION ) {
-            return;
-        }
-
-        File[] selectedFiles = jfc.getSelectedFiles();
-        if ( selectedFiles.length > 0 ) {
-            setPrefDir( PREF_LAST_OPEN_DIR, selectedFiles[0].getParentFile() );
-        }
-
-        for ( File selectedFile : selectedFiles ) {
-            try {
-                openFile( selectedFile );
-            } catch ( IOException exc ) {
-                showErrorMessage( exc );
-            }
-        }
-
+        openFile();
     }//GEN-LAST:event_btnOpenActionPerformed
 
     private void btnSaveAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveAllActionPerformed
-        for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
-            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            saveFile( editorTabs.get( c ) );
-        }
+        saveAllFiles();
     }//GEN-LAST:event_btnSaveAllActionPerformed
 
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
@@ -582,38 +610,7 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_formComponentResized
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-
-        for ( int i = tabbedPaneSourceCode.getTabCount() - 1; i >= 0; i-- ) {
-
-            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
-            EditorTab tab = editorTabs.get( c );
-
-            if ( tab != null && tab.isDirty.get() ) {
-
-                tabbedPaneSourceCode.setSelectedIndex( i );
-
-                int choice = JOptionPane.showConfirmDialog(
-                    this,
-                    "File \"" + tabTitle( tab ) + "\" has unsaved changes. Save before closing?",
-                    "Unsaved Changes",
-                    JOptionPane.YES_NO_CANCEL_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-                );
-
-                if ( choice == JOptionPane.YES_OPTION ) {
-                    if ( !saveFile( tab ) ) {
-                        return;
-                    }
-                } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
-                    return;
-                }
-
-            }
-
-        }
-
-        System.exit( 0 );
-
+        closeApp();
     }//GEN-LAST:event_formWindowClosing
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
@@ -659,6 +656,60 @@ public class MainWindow extends javax.swing.JFrame {
         );
     }//GEN-LAST:event_menuItemAboutActionPerformed
 
+    private void menuItemNewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemNewActionPerformed
+        newFile();
+    }//GEN-LAST:event_menuItemNewActionPerformed
+
+    private void menuItemOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemOpenActionPerformed
+        openFile();
+    }//GEN-LAST:event_menuItemOpenActionPerformed
+
+    private void menuItemSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemSaveActionPerformed
+        if ( activeTab != null ) {
+            saveFile( activeTab );
+        }
+    }//GEN-LAST:event_menuItemSaveActionPerformed
+
+    private void menuItemSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemSaveAsActionPerformed
+        if ( activeTab != null ) {
+            saveFileAs( activeTab );
+        }
+    }//GEN-LAST:event_menuItemSaveAsActionPerformed
+
+    private void menuItemSaveAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemSaveAllActionPerformed
+        saveAllFiles();
+    }//GEN-LAST:event_menuItemSaveAllActionPerformed
+
+    private void menuItemExitActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemExitActionPerformed
+        closeApp();
+    }//GEN-LAST:event_menuItemExitActionPerformed
+
+    private void menuItemCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemCompileActionPerformed
+        if ( activeTab != null ) {
+            executePipeline( activeTab, false, false );
+        }
+    }//GEN-LAST:event_menuItemCompileActionPerformed
+
+    private void menuItemCompileAndRunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemCompileAndRunActionPerformed
+        if ( activeTab != null ) {
+            executePipeline( activeTab, true, false );
+        }
+    }//GEN-LAST:event_menuItemCompileAndRunActionPerformed
+
+    private void menuItemDisassemblyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemDisassemblyActionPerformed
+        if ( activeTab != null ) {
+            executePipeline( activeTab, false, true );
+        }
+    }//GEN-LAST:event_menuItemDisassemblyActionPerformed
+
+    private void menuItemRadioLightActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemRadioLightActionPerformed
+        configureLightTheme();
+    }//GEN-LAST:event_menuItemRadioLightActionPerformed
+
+    private void menuItemRadioDarkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemRadioDarkActionPerformed
+        configureDarkTheme();
+    }//GEN-LAST:event_menuItemRadioDarkActionPerformed
+
     // -------------------------------------------------------------------------
     // File management
     // -------------------------------------------------------------------------
@@ -672,6 +723,35 @@ public class MainWindow extends javax.swing.JFrame {
         EditorTab tab = buildEditorTab( title, null );
         registerDocumentListener( tab );
     }
+    
+    /**
+     * Starts the procedure to open a file.
+     */
+    private void openFile() {
+        
+        JFileChooser jfc = new JFileChooser( getPrefDir( PREF_LAST_OPEN_DIR ) );
+        jfc.setDialogTitle( "Open File" );
+        jfc.setMultiSelectionEnabled( true );
+        jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
+
+        if ( jfc.showOpenDialog( this ) != JFileChooser.APPROVE_OPTION ) {
+            return;
+        }
+
+        File[] selectedFiles = jfc.getSelectedFiles();
+        if ( selectedFiles.length > 0 ) {
+            setPrefDir( PREF_LAST_OPEN_DIR, selectedFiles[0].getParentFile() );
+        }
+
+        for ( File selectedFile : selectedFiles ) {
+            try {
+                openFileInEditor( selectedFile );
+            } catch ( IOException exc ) {
+                showErrorMessage( exc );
+            }
+        }
+        
+    }
 
     /**
      * Opens a CPRL source file in a new editor tab.  If the file is already
@@ -681,7 +761,7 @@ public class MainWindow extends javax.swing.JFrame {
      *
      * @throws IOException if the file cannot be read
      */
-    private void openFile( File file ) throws IOException {
+    private void openFileInEditor( File file ) throws IOException {
 
         if ( openedFilePaths.contains( file.getAbsolutePath() ) ) {
             // File is already open: focus its tab instead of duplicating it.
@@ -736,7 +816,7 @@ public class MainWindow extends javax.swing.JFrame {
     private boolean saveFileAs( EditorTab tab ) {
 
         JFileChooser jfc = new JFileChooser( getPrefDir( PREF_LAST_SAVE_AS_DIR ) );
-        jfc.setDialogTitle( "Save As" );
+        jfc.setDialogTitle( "Save As..." );
         jfc.setFileFilter( new FileNameExtensionFilter( "CPRL Source Code", "cprl" ) );
 
         if ( jfc.showSaveDialog( this ) != JFileChooser.APPROVE_OPTION ) {
@@ -809,6 +889,16 @@ public class MainWindow extends javax.swing.JFrame {
         return true;
 
     }
+    
+    /**
+     * Saves all oppened files.
+     */
+    private void saveAllFiles() {
+        for ( int i = 0; i < tabbedPaneSourceCode.getTabCount(); i++ ) {
+            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+            saveFile( editorTabs.get( c ) );
+        }
+    }
 
     /**
      * Writes the current editor content of {@code tab} to the file referenced
@@ -854,6 +944,44 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
+    /**
+     * Closes the application.
+     */
+    private void closeApp() {
+        
+        for ( int i = tabbedPaneSourceCode.getTabCount() - 1; i >= 0; i-- ) {
+
+            JComponent c = (JComponent) tabbedPaneSourceCode.getComponentAt( i );
+            EditorTab tab = editorTabs.get( c );
+
+            if ( tab != null && tab.isDirty.get() ) {
+
+                tabbedPaneSourceCode.setSelectedIndex( i );
+
+                int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    "File \"" + tabTitle( tab ) + "\" has unsaved changes. Save before closing?",
+                    "Unsaved Changes",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+                );
+
+                if ( choice == JOptionPane.YES_OPTION ) {
+                    if ( !saveFile( tab ) ) {
+                        return;
+                    }
+                } else if ( choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION ) {
+                    return;
+                }
+
+            }
+
+        }
+
+        System.exit( 0 );
+        
+    }
+    
     // -------------------------------------------------------------------------
     // Compiler pipeline
     // -------------------------------------------------------------------------
@@ -1165,6 +1293,59 @@ public class MainWindow extends javax.swing.JFrame {
 
     }
 
+    // -------------------------------------------------------------------------
+    // Theme management
+    // -------------------------------------------------------------------------
+    
+    private void configureLightTheme() {
+
+        FlatLightLaf.setup();
+        setPref( PREF_CURRENT_THEME, "light" );
+        
+        /*Color background = new Color( 255, 255, 255 );
+        textPaneProcessOutputBackgroundColor = background;
+        resultPanelBackgroundColor = background;
+        testSetDetailsDialogBackgroundColor = background;
+        plagiarismPanelBackgroundColor = background;
+        styleCheckerBackgroundColor = background;
+    
+        textPaneProcessOutput.setBackground( textPaneProcessOutputBackgroundColor );
+        resultPanel.setBackgroundColor( resultPanelBackgroundColor );
+        resultPanel.setUseLightTheme( true );
+        useLightTheme = true;*/
+        
+        SwingUtilities.updateComponentTreeUI( this );
+        //SwingUtilities.updateComponentTreeUI( popupMenu );
+        
+        //resultPanel.repaint();
+            
+    }
+
+    private void configureDarkTheme() {
+
+        FlatDarkLaf.setup();
+        setPref( PREF_CURRENT_THEME, "dark" );
+        
+        /*Color background = new Color( 43, 43, 43 );
+        textPaneProcessOutputBackgroundColor = background;
+        resultPanelBackgroundColor = background;
+        testSetDetailsDialogBackgroundColor = background;
+        plagiarismPanelBackgroundColor = background;
+        styleCheckerBackgroundColor = background;
+        
+        textPaneProcessOutput.setBackground( textPaneProcessOutputBackgroundColor );
+        resultPanel.setBackgroundColor( resultPanelBackgroundColor );
+        resultPanel.setUseLightTheme( false );
+        useLightTheme = false;*/
+        
+        SwingUtilities.updateComponentTreeUI( this );
+        //SwingUtilities.updateComponentTreeUI( popupMenu );
+        
+        //resultPanel.repaint();
+        
+    }
+    
+    
     // -------------------------------------------------------------------------
     // Tab management
     // -------------------------------------------------------------------------
@@ -1625,6 +1806,26 @@ public class MainWindow extends javax.swing.JFrame {
         }
         return new File( "./" );
     }
+    
+    /**
+     * Returns a preference or a default one if it not exists.
+     * 
+     * @param key the preference key (one of the {@code PREF_LAST_*} constants)
+     * 
+     * @return the preference value. {@code null} if the key was not persisted
+     */
+    private String getPref( String key ) {
+        String value = prefs.getProperty( key );
+        if ( value == null ) {
+            switch ( key ) {
+                case PREF_CURRENT_THEME:
+                    return "dark";
+                default:
+                    return null;
+            }
+        }
+        return value;
+    }
 
     /**
      * Stores the absolute path of {@code dir} under {@code key} and immediately
@@ -1638,6 +1839,18 @@ public class MainWindow extends javax.swing.JFrame {
             return;
         }
         prefs.setProperty( key, dir.getAbsolutePath() );
+        savePrefs();
+    }
+    
+    /**
+     * Stores a {@code value} under {@code key} and immediately
+     * persists the preferences file.
+     *
+     * @param key the preference key (one of the {@code PREF_LAST_*} constants)
+     * @param value the value to be remembered
+     */
+    private void setPref( String key, String value ) {
+        prefs.setProperty( key, value );
         savePrefs();
     }
 
@@ -1780,12 +1993,22 @@ public class MainWindow extends javax.swing.JFrame {
      * @param args command-line arguments (not used)
      */
     public static void main( String args[] ) {
-        FlatDarkLaf.setup();
+        
+        MainWindow mainWindow = new MainWindow();
+        
+        if ( mainWindow.getPref( PREF_CURRENT_THEME ).equals( "dark" ) )  {
+            mainWindow.configureDarkTheme();
+            mainWindow.menuItemRadioDark.setSelected( true );
+        } else {
+            mainWindow.configureLightTheme();
+            mainWindow.menuItemRadioLight.setSelected( true );
+        }
+        
         SwingUtilities.invokeLater( () -> { 
-            MainWindow mainWindow = new MainWindow();
             Utils.updateSplashScreen( 6000 );
             mainWindow.setVisible( true );
         });
+        
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -1798,11 +2021,30 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JButton btnSaveAll;
     private javax.swing.JButton btnSaveAs;
     private javax.swing.JMenuBar menuBar;
+    private javax.swing.JMenu menuFile;
     private javax.swing.JMenu menuHelp;
     private javax.swing.JMenuItem menuItemAbout;
+    private javax.swing.JMenuItem menuItemCompile;
+    private javax.swing.JMenuItem menuItemCompileAndRun;
+    private javax.swing.JMenuItem menuItemDisassembly;
+    private javax.swing.JMenuItem menuItemExit;
+    private javax.swing.JMenuItem menuItemNew;
+    private javax.swing.JMenuItem menuItemOpen;
+    private javax.swing.JRadioButtonMenuItem menuItemRadioDark;
+    private javax.swing.JRadioButtonMenuItem menuItemRadioLight;
+    private javax.swing.JMenuItem menuItemSave;
+    private javax.swing.JMenuItem menuItemSaveAll;
+    private javax.swing.JMenuItem menuItemSaveAs;
+    private javax.swing.JMenu menuRun;
+    private javax.swing.JMenu menuThemes;
     private javax.swing.JToolBar.Separator sep01;
     private javax.swing.JToolBar.Separator sep02;
+    private javax.swing.JPopupMenu.Separator sepMenuFile01;
+    private javax.swing.JPopupMenu.Separator sepMenuFile02;
+    private javax.swing.JPopupMenu.Separator sepMenuFile03;
+    private javax.swing.JPopupMenu.Separator sepMenuRun01;
     private javax.swing.JTabbedPane tabbedPaneSourceCode;
+    private javax.swing.ButtonGroup themeButtonGroup;
     private javax.swing.JToolBar toolbar;
     // End of variables declaration//GEN-END:variables
 }
