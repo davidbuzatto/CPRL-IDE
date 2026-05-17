@@ -1,1 +1,1 @@
-Needs to finish theme swap.
+Improve splash screen.

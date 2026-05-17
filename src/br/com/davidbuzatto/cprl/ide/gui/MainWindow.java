@@ -73,17 +73,15 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 public class MainWindow extends javax.swing.JFrame {
 
     public static final String VERSION = "v1.0.4";
-    private static final boolean LOAD_TEST_FILES = true;
+    private static final boolean LOAD_TEST_FILES = false;
     private static final boolean DEBUG_ARTEFACTS_DELETION = false;
-    
+
     // -------------------------------------------------------------------------
     // Colors used in the internal console
     // -------------------------------------------------------------------------
-    private static final Color CONSOLE_STDOUT_COLOR = new Color( 0xE8EFF1, false );
-    private static final Color CONSOLE_STDERR_COLOR = new Color( 0xFF6060, false );
-    private static final Color CONSOLE_ECHO_COLOR   = new Color( 0xA0D0FF, false );
-    private static final Color CONSOLE_BG_COLOR     = new Color( 0x1E1E1E, false );
-
+    private static final Color CONSOLE_STDERR_COLOR_DARK  = new Color( 0xFF6060, false );
+    private static final Color CONSOLE_STDERR_COLOR_LIGHT = new Color( 0xD3111A, false );
+    
     // -------------------------------------------------------------------------
     // Custom OutputStream that appends styled text to a JTextPane
     // -------------------------------------------------------------------------
@@ -350,8 +348,8 @@ public class MainWindow extends javax.swing.JFrame {
         sepMenuRun01 = new javax.swing.JPopupMenu.Separator();
         menuItemDisassembly = new javax.swing.JMenuItem();
         menuThemes = new javax.swing.JMenu();
-        menuItemRadioLight = new javax.swing.JRadioButtonMenuItem();
         menuItemRadioDark = new javax.swing.JRadioButtonMenuItem();
+        menuItemRadioLight = new javax.swing.JRadioButtonMenuItem();
         menuHelp = new javax.swing.JMenu();
         menuItemAbout = new javax.swing.JMenuItem();
 
@@ -519,17 +517,17 @@ public class MainWindow extends javax.swing.JFrame {
         menuThemes.setMnemonic('T');
         menuThemes.setText("Themes");
 
-        themeButtonGroup.add(menuItemRadioLight);
-        menuItemRadioLight.setMnemonic('L');
-        menuItemRadioLight.setText("Light");
-        menuItemRadioLight.addActionListener(this::menuItemRadioLightActionPerformed);
-        menuThemes.add(menuItemRadioLight);
-
         themeButtonGroup.add(menuItemRadioDark);
         menuItemRadioDark.setMnemonic('D');
         menuItemRadioDark.setText("Dark");
         menuItemRadioDark.addActionListener(this::menuItemRadioDarkActionPerformed);
         menuThemes.add(menuItemRadioDark);
+
+        themeButtonGroup.add(menuItemRadioLight);
+        menuItemRadioLight.setMnemonic('L');
+        menuItemRadioLight.setText("Light");
+        menuItemRadioLight.addActionListener(this::menuItemRadioLightActionPerformed);
+        menuThemes.add(menuItemRadioLight);
 
         menuBar.add(menuThemes);
 
@@ -1097,8 +1095,8 @@ public class MainWindow extends javax.swing.JFrame {
         InputStream origIn  = System.in;
 
         // 5. Redirect stdout / stderr to the internal console.
-        System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDOUT_COLOR ), true ) );
-        System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, CONSOLE_STDERR_COLOR ), true ) );
+        System.setOut( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, tab.consoleTextPane.getForeground() ), true ) );
+        System.setErr( new PrintStream( new ConsoleOutputStream( tab.consoleTextPane, menuItemRadioDark.isSelected() ? CONSOLE_STDERR_COLOR_DARK : CONSOLE_STDERR_COLOR_LIGHT ), true ) );
 
         // 6. Compile.
         if ( !compile( tab ) ) {
@@ -1130,7 +1128,7 @@ public class MainWindow extends javax.swing.JFrame {
             appendToConsole(
                 tab.consoleTextPane,
                 "\n[Build stopped: no assembly file produced - fix the compilation errors above.]\n",
-                CONSOLE_STDERR_COLOR
+                menuItemRadioDark.isSelected() ? CONSOLE_STDERR_COLOR_DARK : CONSOLE_STDERR_COLOR_LIGHT
             );
             System.setOut( origOut );
             System.setErr( origErr );
@@ -1153,7 +1151,7 @@ public class MainWindow extends javax.swing.JFrame {
                 appendToConsole(
                     tab.consoleTextPane,
                     "\n[Disassembly stopped: no object file produced - fix the build errors above.]\n",
-                    CONSOLE_STDERR_COLOR
+                    menuItemRadioDark.isSelected() ? CONSOLE_STDERR_COLOR_DARK : CONSOLE_STDERR_COLOR_LIGHT
                 );
             }
             System.setOut( origOut );
@@ -1167,7 +1165,7 @@ public class MainWindow extends javax.swing.JFrame {
             appendToConsole(
                 tab.consoleTextPane,
                 "\n[Execution stopped: no object file produced - fix the build errors above.]\n",
-                CONSOLE_STDERR_COLOR
+                menuItemRadioDark.isSelected() ? CONSOLE_STDERR_COLOR_DARK : CONSOLE_STDERR_COLOR_LIGHT
             );
             System.setOut( origOut );
             System.setErr( origErr );
@@ -1237,7 +1235,7 @@ public class MainWindow extends javax.swing.JFrame {
                     appendToConsole(
                         tab.consoleTextPane,
                         "\n[Runtime error: " + cause.getMessage() + "]\n",
-                        CONSOLE_STDERR_COLOR
+                        menuItemRadioDark.isSelected() ? CONSOLE_STDERR_COLOR_DARK : CONSOLE_STDERR_COLOR_LIGHT
                     );
                 }
 
@@ -1282,6 +1280,7 @@ public class MainWindow extends javax.swing.JFrame {
                 String.format( "Disassembled code from %s to %s", objFile.getName(), disFile.getName() ),
                 activeTab.assemblySourceCodeArea.getFont()
             );
+            applyColorScheme( dw.getAssemblySourceCode(), dw.getAssemblySourceCodeSP(), activeTab.assemblySourceCodeArea.getFont(), menuItemRadioDark.isSelected() );
             loadSourceCode( disFile, dw.getAssemblySourceCode() );
 
             SwingUtilities.invokeLater( () -> dw.setVisible( true ) );
@@ -1297,54 +1296,35 @@ public class MainWindow extends javax.swing.JFrame {
     // Theme management
     // -------------------------------------------------------------------------
     
-    private void configureLightTheme() {
-
-        FlatLightLaf.setup();
-        setPref( PREF_CURRENT_THEME, "light" );
-        
-        /*Color background = new Color( 255, 255, 255 );
-        textPaneProcessOutputBackgroundColor = background;
-        resultPanelBackgroundColor = background;
-        testSetDetailsDialogBackgroundColor = background;
-        plagiarismPanelBackgroundColor = background;
-        styleCheckerBackgroundColor = background;
-    
-        textPaneProcessOutput.setBackground( textPaneProcessOutputBackgroundColor );
-        resultPanel.setBackgroundColor( resultPanelBackgroundColor );
-        resultPanel.setUseLightTheme( true );
-        useLightTheme = true;*/
-        
-        SwingUtilities.updateComponentTreeUI( this );
-        //SwingUtilities.updateComponentTreeUI( popupMenu );
-        
-        //resultPanel.repaint();
-            
-    }
-
     private void configureDarkTheme() {
 
         FlatDarkLaf.setup();
         setPref( PREF_CURRENT_THEME, "dark" );
         
-        /*Color background = new Color( 43, 43, 43 );
-        textPaneProcessOutputBackgroundColor = background;
-        resultPanelBackgroundColor = background;
-        testSetDetailsDialogBackgroundColor = background;
-        plagiarismPanelBackgroundColor = background;
-        styleCheckerBackgroundColor = background;
-        
-        textPaneProcessOutput.setBackground( textPaneProcessOutputBackgroundColor );
-        resultPanel.setBackgroundColor( resultPanelBackgroundColor );
-        resultPanel.setUseLightTheme( false );
-        useLightTheme = false;*/
+        for ( EditorTab t : editorTabs.values() ) {
+            applyColorScheme( t.sourceCodeArea, t.sourceCodeAreaSP, t.sourceCodeArea.getFont(), true );
+            applyColorScheme( t.assemblySourceCodeArea, t.assemblySourceCodeAreaSP, t.assemblySourceCodeArea.getFont(), true );
+            applyColorScheme( t.consoleTextPane, true );
+        }
         
         SwingUtilities.updateComponentTreeUI( this );
-        //SwingUtilities.updateComponentTreeUI( popupMenu );
-        
-        //resultPanel.repaint();
         
     }
     
+    private void configureLightTheme() {
+
+        FlatLightLaf.setup();
+        setPref( PREF_CURRENT_THEME, "light" );
+        
+        for ( EditorTab t : editorTabs.values() ) {
+            applyColorScheme( t.sourceCodeArea, t.sourceCodeAreaSP, t.sourceCodeArea.getFont(), false );
+            applyColorScheme( t.assemblySourceCodeArea, t.assemblySourceCodeAreaSP, t.assemblySourceCodeArea.getFont(), false );
+            applyColorScheme( t.consoleTextPane, false );
+        }
+        
+        SwingUtilities.updateComponentTreeUI( this );
+            
+    }
     
     // -------------------------------------------------------------------------
     // Tab management
@@ -1368,27 +1348,20 @@ public class MainWindow extends javax.swing.JFrame {
         // --- Source code area ---
         RSyntaxTextArea sourceCodeArea = new RSyntaxTextArea( 1, 1 );
         sourceCodeArea.setCodeFoldingEnabled( false );
-        sourceCodeArea.setBackground( new Color( 0x3F3F3F, false ) );
-        sourceCodeArea.setCurrentLineHighlightColor( Color.BLACK );
-        sourceCodeArea.setSelectionColor( Color.BLACK );
         sourceCodeArea.setFont( DEFAULT_FONT );
         sourceCodeArea.setAntiAliasingEnabled( true );
         sourceCodeArea.setAutoIndentEnabled( false );
-        sourceCodeArea.setMatchedBracketBGColor( Color.PINK.darker() );
         sourceCodeArea.setTabsEmulated( true );
         sourceCodeArea.setTabSize( 4 );
         sourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
-        applyColorScheme( sourceCodeArea, DEFAULT_FONT );
-
         RTextScrollPane sourceCodeAreaSP = new RTextScrollPane( sourceCodeArea );
-        sourceCodeAreaSP.getGutter().setLineNumberFont( DEFAULT_FONT );
+        applyColorScheme( sourceCodeArea, sourceCodeAreaSP, DEFAULT_FONT, menuItemRadioDark.isSelected() );
 
         // --- Console: output pane ---
         JTextPane consoleTextPane = new JTextPane();
         consoleTextPane.setFont( DEFAULT_FONT );
-        consoleTextPane.setBackground( CONSOLE_BG_COLOR );
-        consoleTextPane.setForeground( CONSOLE_STDOUT_COLOR );
         consoleTextPane.setEditable( false );
+        applyColorScheme( consoleTextPane, menuItemRadioDark.isSelected() );
         JScrollPane consoleScroll = new JScrollPane( consoleTextPane );
 
         // --- Console: input row ---
@@ -1421,7 +1394,7 @@ public class MainWindow extends javax.swing.JFrame {
                 consoleInputField.setText( "" );
                 // Echo the submitted text in a distinct colour so the user can
                 // distinguish their input from the program's output.
-                appendToConsole( consoleTextPane, text + "\n", CONSOLE_ECHO_COLOR );
+                appendToConsole( consoleTextPane, text + "\n", consoleTextPane.getForeground() );
                 try {
                     pos.write( ( text + "\n" ).getBytes() );
                     pos.flush();
@@ -1434,23 +1407,17 @@ public class MainWindow extends javax.swing.JFrame {
         consoleEnterButton.addActionListener( e -> sendInput.run() );
 
         // --- Assembly pane ---
-        RSyntaxTextArea assemblySourceCode = new RSyntaxTextArea();
-        assemblySourceCode.setCodeFoldingEnabled( false );
-        assemblySourceCode.setBackground( new Color( 0x3F3F3F, false ) );
-        assemblySourceCode.setCurrentLineHighlightColor( Color.BLACK );
-        assemblySourceCode.setSelectionColor( Color.BLACK );
-        assemblySourceCode.setFont( DEFAULT_FONT );
-        assemblySourceCode.setAntiAliasingEnabled( true );
-        assemblySourceCode.setAutoIndentEnabled( false );
-        assemblySourceCode.setMatchedBracketBGColor( Color.PINK.darker() );
-        assemblySourceCode.setTabsEmulated( true );
-        assemblySourceCode.setTabSize( 4 );
-        assemblySourceCode.setSyntaxEditingStyle( "text/cprl" );
-        assemblySourceCode.setEditable( false );
-        applyColorScheme( assemblySourceCode, DEFAULT_FONT );
-
-        RTextScrollPane assemblySourceCodeSP = new RTextScrollPane( assemblySourceCode );
-        assemblySourceCodeSP.getGutter().setLineNumberFont( DEFAULT_FONT );
+        RSyntaxTextArea assemblySourceCodeArea = new RSyntaxTextArea();
+        assemblySourceCodeArea.setCodeFoldingEnabled( false );
+        assemblySourceCodeArea.setFont( DEFAULT_FONT );
+        assemblySourceCodeArea.setAntiAliasingEnabled( true );
+        assemblySourceCodeArea.setAutoIndentEnabled( false );
+        assemblySourceCodeArea.setTabsEmulated( true );
+        assemblySourceCodeArea.setTabSize( 4 );
+        assemblySourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
+        assemblySourceCodeArea.setEditable( false );
+        RTextScrollPane assemblySourceCodeAreaSP = new RTextScrollPane( assemblySourceCodeArea );
+        applyColorScheme( assemblySourceCodeArea, assemblySourceCodeAreaSP, DEFAULT_FONT, menuItemRadioDark.isSelected() );
 
         // --- Split panes ---
         JSplitPane verticalSplit = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
@@ -1459,7 +1426,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         JSplitPane horizontalSplit = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT );
         horizontalSplit.setLeftComponent( verticalSplit );
-        horizontalSplit.setRightComponent( assemblySourceCodeSP );
+        horizontalSplit.setRightComponent( assemblySourceCodeAreaSP );
 
         JPanel container = new JPanel( new BorderLayout() );
         container.add( horizontalSplit, BorderLayout.CENTER );
@@ -1471,8 +1438,8 @@ public class MainWindow extends javax.swing.JFrame {
             sourceCodeArea,
             sourceCodeAreaSP,
             consoleTextPane,
-            assemblySourceCode,
-            assemblySourceCodeSP,
+            assemblySourceCodeArea,
+            assemblySourceCodeAreaSP,
             horizontalSplit,
             verticalSplit,
             new AtomicReference<>( fileInfo ),
@@ -1874,14 +1841,34 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     /**
-     * Applies the IDE colour scheme to an {@link RSyntaxTextArea}.  Sets fonts
+     * Applies the IDE colour scheme to an {@link RSyntaxTextArea}. Sets fonts
      * and foreground colours for every relevant token type used by the CPRL
      * language definition.
      *
      * @param sourceCodeArea the text area to style
+     * @param sourceCodeAreaSP the text area scroll pane to style (gutter)
+     * @param font the font to be used
+     * @param dark if it is the dark theme
      */
-    public static void applyColorScheme( RSyntaxTextArea sourceCodeArea, Font font ) {
-
+    public static void applyColorScheme( RSyntaxTextArea sourceCodeArea, RTextScrollPane sourceCodeAreaSP, Font font, boolean dark ) {
+        
+        if ( dark ) {
+            sourceCodeArea.setBackground( new Color( 0x24292E, false ) );
+            sourceCodeArea.setCurrentLineHighlightColor( new Color( 0x2B3036, false ) );
+            sourceCodeArea.setSelectionColor( new Color( 0x284667, false ) );
+            sourceCodeArea.setMatchedBracketBGColor( new Color( 0x25686C, false ) );
+            sourceCodeArea.setMatchedBracketBorderColor( new Color( 0x25686C, false ) );
+        } else {
+            sourceCodeArea.setBackground( new Color( 0xFFFFFF, false ) );
+            sourceCodeArea.setCurrentLineHighlightColor( new Color( 0xF6F8FA, false ) );
+            sourceCodeArea.setSelectionColor( new Color( 0xDBE9F9, false ) );
+            sourceCodeArea.setMatchedBracketBGColor( new Color( 0xC5EED1, false ) );
+            sourceCodeArea.setMatchedBracketBorderColor( new Color( 0xC5EED1, false ) );
+        }
+        
+        sourceCodeAreaSP.getGutter().setBackground( sourceCodeArea.getBackground() );
+        sourceCodeAreaSP.getGutter().setLineNumberFont( sourceCodeArea.getFont() );
+        
         SyntaxScheme scheme = sourceCodeArea.getSyntaxScheme();
 
         scheme.getStyle( Token.RESERVED_WORD ).font = font;
@@ -1890,18 +1877,56 @@ public class MainWindow extends javax.swing.JFrame {
         scheme.getStyle( Token.DATA_TYPE ).font = font;
         scheme.getStyle( Token.OPERATOR ).font = font;
 
-        scheme.getStyle( Token.COMMENT_EOL ).foreground                 = new Color( 0x808080, false );
-        scheme.getStyle( Token.IDENTIFIER ).foreground                  = new Color( 0xFFFFFF, false );
-        scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground             = new Color( 0x79B8FF, false );
-        scheme.getStyle( Token.LITERAL_CHAR ).foreground                = new Color( 0x9ECBFF, false );
-        scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground  = new Color( 0x79B8FF, false );
-        scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x9ECBFF, false );
-        scheme.getStyle( Token.OPERATOR ).foreground                    = new Color( 0xFF8040, false );
-        scheme.getStyle( Token.RESERVED_WORD ).foreground               = new Color( 0xF97583, false );
-        scheme.getStyle( Token.DATA_TYPE ).foreground                   = new Color( 0xB392F0, false );
-        scheme.getStyle( Token.SEPARATOR ).foreground                   = new Color( 0xFFFFFF, false );
+        if ( dark ) {
+            scheme.getStyle( Token.COMMENT_EOL ).foreground                 = new Color( 0x808080, false );
+            scheme.getStyle( Token.IDENTIFIER ).foreground                  = new Color( 0xE1E4DC, false );
+            scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground             = new Color( 0x79B8FF, false );
+            scheme.getStyle( Token.LITERAL_CHAR ).foreground                = new Color( 0x9ECBFF, false );
+            scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground  = new Color( 0x79B8FF, false );
+            scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x9ECBFF, false );
+            scheme.getStyle( Token.OPERATOR ).foreground                    = new Color( 0xF97583, false );
+            scheme.getStyle( Token.RESERVED_WORD ).foreground               = new Color( 0xF97583, false );
+            scheme.getStyle( Token.DATA_TYPE ).foreground                   = new Color( 0xB392F0, false );
+            scheme.getStyle( Token.SEPARATOR ).foreground                   = new Color( 0xFFFFFF, false );
+        } else {
+            scheme.getStyle( Token.COMMENT_EOL ).foreground                 = new Color( 0x6A737D, false );
+            scheme.getStyle( Token.IDENTIFIER ).foreground                  = new Color( 0x24292E, false );
+            scheme.getStyle( Token.LITERAL_BOOLEAN ).foreground             = new Color( 0x005CC5, false );
+            scheme.getStyle( Token.LITERAL_CHAR ).foreground                = new Color( 0x032F62, false );
+            scheme.getStyle( Token.LITERAL_NUMBER_DECIMAL_INT ).foreground  = new Color( 0x005CC5, false );
+            scheme.getStyle( Token.LITERAL_STRING_DOUBLE_QUOTE ).foreground = new Color( 0x032F62, false );
+            scheme.getStyle( Token.OPERATOR ).foreground                    = new Color( 0xD73A49, false );
+            scheme.getStyle( Token.RESERVED_WORD ).foreground               = new Color( 0xD73A49, false );
+            scheme.getStyle( Token.DATA_TYPE ).foreground                   = new Color( 0x6F42C1, false );
+            scheme.getStyle( Token.SEPARATOR ).foreground                   = new Color( 0x000000, false );
+        }
 
         sourceCodeArea.revalidate();
+        sourceCodeAreaSP.revalidate();
+
+    }
+    
+    /**
+     * Applies the IDE colour scheme to an {@link JTextPane}.
+     *
+     * @param consoleTextArea the text area to style
+     * @param dark if it is the dark theme
+     */
+    public static void applyColorScheme( JTextPane consoleTextArea, boolean dark ) {
+    
+        if ( dark ) {
+            consoleTextArea.setBackground( new Color( 0x1F2428, false ) );
+            consoleTextArea.setForeground( new Color( 0xC5D5DA, false ) );
+            consoleTextArea.setSelectedTextColor( new Color( 0xC5D5DA, false ) );
+            consoleTextArea.setSelectionColor( new Color( 0x244262, false ) );
+        } else {
+            consoleTextArea.setBackground( new Color( 0xF6F8FA, false ) );
+            consoleTextArea.setForeground( new Color( 0x586069, false ) );
+            consoleTextArea.setSelectedTextColor( new Color( 0x586069, false ) );
+            consoleTextArea.setSelectionColor( new Color( 0xD4E3F5, false ) );
+        }
+
+        consoleTextArea.revalidate();
 
     }
 
@@ -1997,11 +2022,11 @@ public class MainWindow extends javax.swing.JFrame {
         MainWindow mainWindow = new MainWindow();
         
         if ( mainWindow.getPref( PREF_CURRENT_THEME ).equals( "dark" ) )  {
-            mainWindow.configureDarkTheme();
             mainWindow.menuItemRadioDark.setSelected( true );
+            mainWindow.configureDarkTheme();
         } else {
-            mainWindow.configureLightTheme();
             mainWindow.menuItemRadioLight.setSelected( true );
+            mainWindow.configureLightTheme();
         }
         
         SwingUtilities.invokeLater( () -> { 

@@ -14,7 +14,8 @@ import org.fife.ui.rtextarea.RTextScrollPane;
  */
 public class DisassemblyWindow extends javax.swing.JFrame {
     
-    private RSyntaxTextArea assemblySourceCode;
+    private RSyntaxTextArea assemblySourceCodeArea;
+    private RTextScrollPane assemblySourceCodeAreaSP;
     
     public DisassemblyWindow( String title, Font font ) {
         
@@ -22,30 +23,28 @@ public class DisassemblyWindow extends javax.swing.JFrame {
         setTitle( title );
         setIconImage( new ImageIcon(getClass().getResource("/br/com/davidbuzatto/cprl/ide/gui/icons/firefly-48.png") ).getImage() );
         
-        assemblySourceCode = new RSyntaxTextArea();
-        assemblySourceCode.setCodeFoldingEnabled( false );
-        assemblySourceCode.setBackground( new Color( 0x3F3F3F, false ) );
-        assemblySourceCode.setCurrentLineHighlightColor( Color.BLACK );
-        assemblySourceCode.setSelectionColor( Color.BLACK );
-        assemblySourceCode.setFont( font );
-        assemblySourceCode.setAntiAliasingEnabled( true );
-        assemblySourceCode.setAutoIndentEnabled( false );
-        assemblySourceCode.setMatchedBracketBGColor( Color.PINK.darker() );
-        assemblySourceCode.setTabsEmulated( true );
-        assemblySourceCode.setTabSize( 4 );
-        assemblySourceCode.setSyntaxEditingStyle( "text/cprl" );
-        assemblySourceCode.setEditable( false );
-        MainWindow.applyColorScheme( assemblySourceCode, font );
+        assemblySourceCodeArea = new RSyntaxTextArea();
+        assemblySourceCodeArea.setCodeFoldingEnabled( false );
+        assemblySourceCodeArea.setFont( font );
+        assemblySourceCodeArea.setAntiAliasingEnabled( true );
+        assemblySourceCodeArea.setAutoIndentEnabled( false );
+        assemblySourceCodeArea.setTabsEmulated( true );
+        assemblySourceCodeArea.setTabSize( 4 );
+        assemblySourceCodeArea.setSyntaxEditingStyle( "text/cprl" );
+        assemblySourceCodeArea.setEditable( false );
         
-        RTextScrollPane assemblySourceCodeSP = new RTextScrollPane( assemblySourceCode );
-        assemblySourceCodeSP.getGutter().setLineNumberFont( font );
+        assemblySourceCodeAreaSP = new RTextScrollPane( assemblySourceCodeArea );
         
-        add( assemblySourceCodeSP, BorderLayout.CENTER );
+        add( assemblySourceCodeAreaSP, BorderLayout.CENTER );
         
     }
 
     public RSyntaxTextArea getAssemblySourceCode() {
-        return assemblySourceCode;
+        return assemblySourceCodeArea;
+    }
+    
+    public RTextScrollPane getAssemblySourceCodeSP() {
+        return assemblySourceCodeAreaSP;
     }
 
     @SuppressWarnings( "unchecked" )

@@ -73,7 +73,7 @@
     
     <target name="-post-jar">
         
-        <property name="artefato" value="CPRL-IDE-1.0.3"/>
+        <property name="artefato" value="CPRL-IDE-1.0.4"/>
         <property name="caminho" value="${dist.dir}/../${artefato}"/>
         
         <!-- remoção do readme -->
