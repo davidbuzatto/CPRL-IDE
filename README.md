@@ -15,7 +15,7 @@ CPRL is a small, Pascal-like programming language designed for educational purpo
 - **Assembly view** — after a successful build, the generated `.asm` source is displayed in a read-only side panel.
 - **Disassembler** — disassembles the `.obj` bytecode file and opens the result in a separate viewer window.
 - **File management** — New, Open, Save, Save As, and Save All, with dirty-state tracking (unsaved tabs are marked with `*`).
-- **Dark theme** — powered by [FlatLaf](https://www.formdev.com/flatlaf/) Dark.
+- **Dark and Light themes** — powered by [FlatLaf](https://www.formdev.com/flatlaf/) Dark.
 
 ---
 
